@@ -1,0 +1,34 @@
+# API framework
+fastapi
+uvicorn[standard]
+
+# Authentication
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
+
+# Database
+sqlalchemy
+aiosqlite
+
+# Gemini AI
+google-generativeai
+langchain-google-genai
+
+# RAG / Vector store
+langchain
+langchain-community
+chromadb
+
+# Document parsing
+pymupdf
+python-docx
+
+# Utilities
+python-dotenv
+pydantic
+pydantic-settings
+aiofiles
+
+# Evaluation
+ragas

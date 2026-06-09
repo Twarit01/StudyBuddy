@@ -1,0 +1,12 @@
+export default function App() {
+  return (
+    <div style={{
+      background: "black",
+      color: "white",
+      fontSize: "40px",
+      padding: "50px"
+    }}>
+      APP IS WORKING
+    </div>
+  )
+}
