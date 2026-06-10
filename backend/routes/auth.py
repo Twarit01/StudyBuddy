@@ -3,12 +3,13 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from core.database import get_db
 from core.auth import hash_password, verify_password, create_access_token
+from core.dependencies import get_current_user
 from models.user import User
 
 router = APIRouter()
 
 
-# ── Request / Response schemas ────────────────────────────────────────────────
+# ── Schemas ───────────────────────────────────────────────────────────────────
 
 class RegisterRequest(BaseModel):
     email: EmailStr
@@ -38,13 +39,9 @@ class TokenResponse(BaseModel):
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=TokenResponse, status_code=201)
 def register(request: RegisterRequest, db: Session = Depends(get_db)):
-    """
-    Register a new user.
-    Checks email is not already taken, hashes password, creates user.
-    """
-    # Check email not already registered
+    """Register a new user account."""
     existing = db.query(User).filter(User.email == request.email).first()
     if existing:
         raise HTTPException(
@@ -52,14 +49,12 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):
             detail="Email already registered"
         )
 
-    # Validate password length
     if len(request.password) < 6:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Password must be at least 6 characters"
         )
 
-    # Create user
     user = User(
         email=request.email,
         full_name=request.full_name,
@@ -69,7 +64,6 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
 
-    # Generate token
     token = create_access_token(data={"sub": str(user.id)})
 
     return TokenResponse(
@@ -81,10 +75,7 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse)
 def login(request: LoginRequest, db: Session = Depends(get_db)):
-    """
-    Login with email and password.
-    Returns JWT token on success.
-    """
+    """Login with email and password."""
     user = db.query(User).filter(User.email == request.email).first()
 
     if not user or not verify_password(request.password, user.hashed_password):
@@ -109,17 +100,6 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/me", response_model=UserResponse)
-def get_me(db: Session = Depends(get_db), current_user: User = Depends(lambda: None)):
-    """
-    Get current logged-in user info.
-    """
-    from core.dependencies import get_current_user
+def get_me(current_user: User = Depends(get_current_user)):
+    """Get current logged in user profile."""
     return current_user
-
-
-@router.get("/me", response_model=UserResponse)
-def get_current_user_info(db: Session = Depends(get_db)):
-    """Returns current user profile."""
-    from core.dependencies import get_current_user
-    from fastapi import Request
-    return {"message": "Use Authorization header with Bearer token"}

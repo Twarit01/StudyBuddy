@@ -132,8 +132,6 @@ def ask_question(
 
     # Step 6: Assess confidence
     confidence = "medium"
-    if context_texts:
-        confidence = assess_confidence(request.question, context_texts, answer)
 
     # Step 7: Format sources
     sources = [
