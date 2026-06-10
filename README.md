@@ -52,36 +52,55 @@ Engineering students struggle to extract clear understanding from dense textbook
 
 ---
 
-## 🏗️ Architecture┌─────────────────────────────────────────────────────────┐
-│                     React Frontend                       │
-│         (Vite + Tailwind + Recharts + KaTeX)            │
-└──────────────────────┬──────────────────────────────────┘
-│ REST API
-┌──────────────────────▼──────────────────────────────────┐
-│                   FastAPI Backend                        │
-│                                                         │
-│  ┌─────────────┐  ┌──────────────┐  ┌───────────────┐  │
-│  │  Auth/JWT   │  │  RAG Engine  │  │  Quiz/Cards   │  │
-│  └─────────────┘  └──────┬───────┘  └───────────────┘  │
-│                          │                              │
-│  ┌───────────────────────▼─────────────────────────┐    │
-│  │              Gemini 2.5 Flash API               │    │
-│  │     (Text Generation + Embeddings)              │    │
-│  └───────────────────────┬─────────────────────────┘    │
-│                          │                              │
-│  ┌───────────────────────▼─────────────────────────┐    │
-│  │      ChromaDB (Vector Store — per user)         │    │
-│  └─────────────────────────────────────────────────┘    │
-│                                                         │
-│  ┌─────────────────────────────────────────────────┐    │
-│  │           SQLite (Users, Quizzes,               │    │
-│  │           Flashcards, Chat History)             │    │
-│  └─────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────┘
-### RAG Pipeline
-Upload → Extract Text → Semantic Chunks → Gemini Embeddings
-→ ChromaDB Storage → Query Embedding → Top-5 Retrieval
-→ Gemini Generation → Source Citations → Confidence Score
+## 🏗️ Architecture
+
+**Frontend** → React + Vite + Tailwind + Recharts + KaTeX
+
+↕ REST API
+
+**Backend** → FastAPI + Python 3.11
+- Auth / JWT
+- RAG Engine
+- Quiz & Flashcard Generator
+- Study Planner
+
+↕ Gemini API
+
+**AI Layer** → Gemini 2.5 Flash
+- Text Generation
+- Embeddings (text-embedding-004)
+
+↕ Storage
+
+**Vector DB** → ChromaDB (per-user isolated collections)
+
+**Relational DB** → SQLite → Users, Documents, Quizzes, Flashcards, Chat History
+
+---
+
+## 🔄 RAG Pipeline
+
+**Step 1 — Ingest**
+Upload PDF / DOCX / TXT → PyMuPDF extracts text page by page
+
+**Step 2 — Chunk**
+Text split into 512-token chunks with 64-token overlap to preserve context
+
+**Step 3 — Embed**
+Gemini text-embedding-004 converts each chunk to a vector
+
+**Step 4 — Store**
+Vectors stored in ChromaDB with document name and page metadata
+
+**Step 5 — Retrieve**
+User question embedded → Top-5 most similar chunks fetched by cosine similarity
+
+**Step 6 — Generate**
+Gemini 2.5 Flash generates answer using retrieved chunks as context
+
+**Step 7 — Cite**
+Response includes source document, page number, and confidence score
+
 ---
 
 ## 🛠️ Tech Stack
@@ -156,33 +175,62 @@ npm run dev
 
 ### 5. Open in browser
 http://localhost:5173
+
 ---
 
 ## 📁 Project Structure
+
 StudyBuddy/
 ├── backend/
-│   ├── core/               # Config, database, auth, dependencies
-│   ├── models/             # SQLAlchemy models
-│   ├── routes/             # FastAPI route handlers
-│   ├── services/           # Business logic
-│   │   ├── gemini.py       # Gemini API wrapper
-│   │   ├── rag.py          # RAG pipeline
+│   ├── core/
+│   │   ├── config.py
+│   │   ├── database.py
+│   │   ├── auth.py
+│   │   └── dependencies.py
+│   ├── models/
+│   │   ├── user.py
+│   │   ├── document.py
+│   │   ├── chat_session.py
+│   │   ├── quiz_attempt.py
+│   │   └── flashcard.py
+│   ├── routes/
+│   │   ├── auth.py
+│   │   ├── documents.py
+│   │   ├── chat.py
+│   │   ├── quiz.py
+│   │   └── flashcards.py
+│   ├── services/
+│   │   ├── gemini.py
+│   │   ├── rag.py
 │   │   ├── document_processor.py
 │   │   ├── quiz_generator.py
 │   │   ├── flashcard_generator.py
 │   │   └── study_planner.py
-│   ├── main.py             # FastAPI entry point
-│   └── requirements.txt
+│   ├── main.py
+│   ├── requirements.txt
+│   └── .env.example
 ├── frontend/
 │   └── src/
-│       ├── pages/          # Login, Dashboard, Chat, Quiz, Flashcards, Progress
-│       ├── components/     # Sidebar, FileUpload, SourceCitation, etc.
-│       ├── api/            # Axios API calls
-│       ├── context/        # Auth context
-│       └── hooks/          # Custom React hooks
+│       ├── pages/
+│       │   ├── Login.jsx
+│       │   ├── Register.jsx
+│       │   ├── Dashboard.jsx
+│       │   ├── Chat.jsx
+│       │   ├── Quiz.jsx
+│       │   ├── Flashcards.jsx
+│       │   └── Progress.jsx
+│       ├── components/
+│       │   ├── Sidebar.jsx
+│       │   ├── FileUpload.jsx
+│       │   ├── SourceCitation.jsx
+│       │   └── ProtectedRoute.jsx
+│       ├── api/
+│       ├── context/
+│       └── hooks/
 ├── eval/
-│   └── ragas_eval.py       # RAG quality evaluation
+│   └── ragas_eval.py
 └── README.md
+
 ---
 
 ## 🔑 Environment Variables
@@ -218,22 +266,7 @@ MAX_FILE_SIZE_MB=50
 | POST | `/api/flashcards/{id}/review` | Submit SM-2 review |
 | GET | `/api/flashcards/stats` | Get flashcard stats |
 
-Full API docs available at `http://localhost:8000/docs`
-
----
-
-## 🧠 How RAG Works
-
-1. **Upload** — Student uploads PDF/DOCX/TXT study material
-2. **Extract** — PyMuPDF extracts text page by page
-3. **Chunk** — Text split into 512-token overlapping chunks
-4. **Embed** — Gemini converts each chunk to a vector
-5. **Store** — Vectors stored in ChromaDB with metadata
-6. **Query** — Student question embedded with retrieval_query task
-7. **Retrieve** — Top-5 most similar chunks fetched by cosine similarity
-8. **Generate** — Gemini 2.5 Flash generates answer using retrieved context
-9. **Cite** — Response includes source document and page number
-10. **Evaluate** — Confidence rated as High / Medium / Low
+Full interactive API docs available at `http://localhost:8000/docs`
 
 ---
 
@@ -241,11 +274,16 @@ Full API docs available at `http://localhost:8000/docs`
 
 Flashcards use the SM-2 algorithm — the same algorithm used by Anki:
 
-- **Quality 0** — Complete blackout → review tomorrow
-- **Quality 3** — Correct with effort → interval increases
-- **Quality 5** — Perfect recall → long interval, high ease factor
-- **Ease factor** — Never drops below 1.3
-- **Due today** — Dashboard shows cards scheduled for review
+| Quality | Meaning | Result |
+|---|---|---|
+| 0 | Complete blackout | Reset — review tomorrow |
+| 1 | Wrong but recognized | Reset — review tomorrow |
+| 2 | Wrong but easy recall | Reset — review soon |
+| 3 | Correct with effort | Interval increases slowly |
+| 4 | Correct with hesitation | Interval increases |
+| 5 | Perfect recall | Long interval, high ease factor |
+
+Ease factor never drops below 1.3. Due cards shown on dashboard daily.
 
 ---
 
