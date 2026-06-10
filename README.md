@@ -20,12 +20,12 @@ Upload any PDF, DOCX, or TXT file → StudyBuddy builds a RAG pipeline on top of
 
 ---
 
-## 🎬 How It Works
+## 🎬 How It Works — Full Flow
 
 ```mermaid
 flowchart TD
     A([🎓 Student]) -->|Uploads PDF / DOCX / TXT| B[📄 Document Processor]
-    B -->|Extract + Chunk + Embed| C[(🗄️ ChromaDB Vector Store)]
+    B -->|Extract + Chunk + Embed| C[(🗄️ ChromaDB\nVector Store)]
 
     A -->|Asks a question| D[💬 Q&A Chat]
     D -->|Retrieve top-5 chunks| C
@@ -40,7 +40,7 @@ flowchart TD
     G -->|Retrieve key concepts| C
     G -->|Generate cards + SM-2 schedule| E
 
-    E -->|All results saved| H[(💾 SQLite Database)]
+    E -->|Results saved| H[(💾 SQLite Database)]
     H -->|Scores + streaks + weak topics| I[📊 Progress Dashboard]
     I --> A
 
@@ -50,42 +50,6 @@ flowchart TD
     style H fill:#2196F3,color:#fff
     style I fill:#4CAF50,color:#fff
 ```
-
----
-
-## ✨ Features
-
-### 📄 Document Ingestion
-- Upload PDF, DOCX, and TXT files
-- Semantic chunking — 512 tokens with 64 token overlap
-- Gemini embeddings stored in ChromaDB
-- Every user gets their own isolated vector store
-
-### 💬 RAG-Powered Q&A Chat
-- Answers grounded strictly in your uploaded material
-- Source citations — document name and page number on every answer
-- Confidence indicator — High / Medium / Low
-- Conversation memory — follow-up questions work naturally
-- LaTeX formula rendering for engineering equations
-
-### 📝 Quiz Generator
-- Three types — MCQ, Short Answer, Formula Recall
-- Three difficulty levels — Easy, Medium, Hard
-- Gemini evaluates short answers and gives detailed feedback
-- Scores saved per topic and feed into progress tracking
-
-### 🃏 Flashcard System
-- AI generates flashcards from your uploaded material
-- SM-2 spaced repetition algorithm — same as Anki
-- Cards scheduled based on how well you know them
-- Due-today queue shown on dashboard
-
-### 📊 Progress Dashboard
-- Topic accuracy bar chart
-- Weak topic detector — flags anything below 60%
-- Study streak counter
-- Activity heatmap — last 30 days
-- Flashcard breakdown — mastered / learning / new / due today
 
 ---
 
@@ -131,49 +95,70 @@ flowchart LR
 
 ---
 
-## 🔄 RAG Pipeline — Step by Step
+## ✨ Features
 
-```mermaid
-flowchart LR
-    A[📄 Upload] -->|PyMuPDF / python-docx| B[Extract Text]
-    B -->|512 tokens\n64 overlap| C[Semantic Chunks]
-    C -->|text-embedding-004| D[Gemini Embeddings]
-    D -->|cosine similarity| E[(ChromaDB)]
+### 📄 Document Ingestion
+- Upload PDF, DOCX, and TXT files
+- Semantic chunking — 512 tokens with 64 token overlap
+- Gemini embeddings stored in ChromaDB
+- Every user gets their own isolated vector store
 
-    F[❓ Question] -->|retrieval_query| G[Query Embedding]
-    G -->|top-5 similar| E
-    E --> H[Retrieved Chunks]
-    H -->|context + question| I[Gemini 2.5 Flash]
-    I --> J[✅ Answer\n+ Source Citation\n+ Confidence Score]
+### 💬 RAG-Powered Q&A Chat
+- Answers grounded strictly in your uploaded material
+- Source citations — document name and page number on every answer
+- Confidence indicator — High / Medium / Low
+- Conversation memory — follow-up questions work naturally
+- LaTeX formula rendering for engineering equations
 
-    style A fill:#7c6af7,color:#fff
-    style F fill:#7c6af7,color:#fff
-    style E fill:#9C27B0,color:#fff
-    style I fill:#FF6B35,color:#fff
-    style J fill:#4CAF50,color:#fff
-```
+### 📝 Quiz Generator
+- Three types — MCQ, Short Answer, Formula Recall
+- Three difficulty levels — Easy, Medium, Hard
+- Gemini evaluates short answers and gives detailed feedback
+- Scores saved per topic and feed into progress tracking
+
+### 🃏 Flashcard System
+- AI generates flashcards from your uploaded material
+- SM-2 spaced repetition algorithm — same as Anki
+- Cards scheduled based on how well you know them
+- Due-today queue shown on dashboard
+
+### 📊 Progress Dashboard
+- Topic accuracy bar chart
+- Weak topic detector — flags anything below 60%
+- Study streak counter
+- Activity heatmap — last 30 days
+- Flashcard breakdown — mastered / learning / new / due today
+
+---
+
+## 🔄 RAG Pipeline
+
+1. **Upload** — Student uploads PDF / DOCX / TXT
+2. **Extract** — PyMuPDF and python-docx extract text page by page
+3. **Chunk** — Text split into 512-token chunks with 64-token overlap
+4. **Embed** — Gemini text-embedding-004 converts each chunk to a vector
+5. **Store** — Vectors saved in ChromaDB with document name and page metadata
+6. **Query** — Student question converted to a query embedding
+7. **Retrieve** — Top-5 most similar chunks fetched by cosine similarity
+8. **Generate** — Gemini 2.5 Flash generates answer using retrieved chunks as context
+9. **Cite** — Every answer shows source document, page number, and confidence score
 
 ---
 
 ## 📈 Spaced Repetition — SM-2 Algorithm
 
-```mermaid
-flowchart LR
-    A[Review Card] --> B{Rate Quality\n0 to 5}
-    B -->|0-2 Forgot| C[Reset Interval\nReview Tomorrow]
-    B -->|3 Hard| D[Interval +1 day]
-    B -->|4 Good| E[Interval × Ease Factor]
-    B -->|5 Perfect| F[Long Interval\nEase Factor increases]
-    C --> G[Update next_review date]
-    D --> G
-    E --> G
-    F --> G
-    G --> H[Show in\nDue Today Queue]
+Flashcards use the SM-2 algorithm — the same one used by Anki:
 
-    style A fill:#7c6af7,color:#fff
-    style B fill:#FF6B35,color:#fff
-    style H fill:#4CAF50,color:#fff
-```
+| Quality | Meaning | What happens |
+|---|---|---|
+| 0 | Complete blackout | Reset — review tomorrow |
+| 1 | Wrong, recognized answer | Reset — review tomorrow |
+| 2 | Wrong but easy recall | Reset — review soon |
+| 3 | Correct with effort | Interval increases slowly |
+| 4 | Correct with hesitation | Interval increases |
+| 5 | Perfect recall | Long interval, ease factor goes up |
+
+Ease factor never drops below 1.3. Due cards always shown on dashboard.
 
 ---
 
@@ -182,16 +167,16 @@ flowchart LR
 | Layer | Technology | Purpose |
 |---|---|---|
 | LLM | Gemini 2.5 Flash | Text generation, quiz, flashcards |
-| Embeddings | Gemini text-embedding-004 | Document + query vectorization |
+| Embeddings | Gemini text-embedding-004 | Document and query vectorization |
 | Vector DB | ChromaDB | Semantic similarity search |
 | RAG Framework | LangChain | Document chunking pipeline |
 | Backend | FastAPI + Python 3.11 | REST API |
 | Database | SQLite + SQLAlchemy | Users, quizzes, flashcards, chats |
-| Frontend | React 18 + Vite | UI |
-| Styling | Tailwind CSS | Design |
+| Frontend | React 18 + Vite | User interface |
+| Styling | Tailwind CSS | Design system |
 | Charts | Recharts | Progress visualization |
 | Auth | JWT + bcrypt | Secure user sessions |
-| PDF Parsing | PyMuPDF | Text extraction |
+| PDF Parsing | PyMuPDF | Text extraction from PDFs |
 | Spaced Repetition | SM-2 Algorithm | Flashcard scheduling |
 
 ---
@@ -234,8 +219,6 @@ npm install
 
 ### 4. Run the application
 
-Open two terminals:
-
 **Terminal 1 — Backend:**
 ```bash
 cd backend
@@ -250,10 +233,9 @@ npm run dev
 ```
 
 ### 5. Open in browser
-
 http://localhost:5173
 
-API documentation available at `http://localhost:8000/docs`
+API docs at `http://localhost:8000/docs`
 
 ---
 
@@ -265,8 +247,8 @@ API documentation available at `http://localhost:8000/docs`
 - `routes/` — auth.py, documents.py, chat.py, quiz.py, flashcards.py
 - `services/` — gemini.py, rag.py, document_processor.py, quiz_generator.py, flashcard_generator.py, study_planner.py
 - `main.py` — FastAPI app entry point
-- `requirements.txt` — all Python dependencies
-- `.env.example` — environment variables template
+- `requirements.txt` — Python dependencies
+- `.env.example` — Environment variables template
 
 **Frontend** `frontend/src/`
 - `pages/` — Login, Register, Dashboard, Chat, Quiz, Flashcards, Progress
@@ -324,10 +306,3 @@ MAX_FILE_SIZE_MB=50
 5. Open a Pull Request
 
 ---
-
-## 👨‍💻 Author
-
-**Twarit** — [@Twarit01](https://github.com/Twarit01)
-
----
-⭐ If this project helped you, give it a star on GitHub!
