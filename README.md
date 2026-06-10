@@ -1,4 +1,6 @@
-# 🧠 StudyBuddy AI — AI-Powered Study Assistant for Engineering Students
+# 🧠 StudyBuddy AI
+
+### AI-Powered Study Assistant for Engineering Students
 
 ![Python](https://img.shields.io/badge/Python-3.11-blue?style=flat-square&logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.111-green?style=flat-square&logo=fastapi)
@@ -6,13 +8,48 @@
 ![Gemini](https://img.shields.io/badge/Gemini-2.5_Flash-orange?style=flat-square&logo=google)
 ![ChromaDB](https://img.shields.io/badge/ChromaDB-Vector_DB-purple?style=flat-square)
 
-> An intelligent study companion that transforms your lecture notes and textbooks into an interactive learning experience — powered by RAG, spaced repetition, and Gemini AI.
+> Upload your lecture notes and textbooks → Ask questions → Generate quizzes → Study with flashcards → Track your progress. All powered by Gemini AI and RAG.
 
 ---
 
-## 🎯 Problem Statement
+## 📌 What is StudyBuddy?
 
-Engineering students struggle to extract clear understanding from dense textbooks and lecture notes. Passive reading yields poor retention, and private tutoring is inaccessible to most. StudyBuddy solves this by building a personalized AI knowledge base from your own study materials.
+Most engineering students read their notes passively and forget 70% within a week. StudyBuddy fixes this by turning your static study material into an interactive AI-powered knowledge base.
+
+Upload any PDF, DOCX, or TXT file → StudyBuddy builds a RAG pipeline on top of it → You can ask questions, generate quizzes, and create flashcards — all grounded in your own material, not generic internet knowledge.
+
+---
+
+## 🎬 How It Works
+
+```mermaid
+flowchart TD
+    A([🎓 Student]) -->|Uploads PDF / DOCX / TXT| B[📄 Document Processor]
+    B -->|Extract + Chunk + Embed| C[(🗄️ ChromaDB Vector Store)]
+
+    A -->|Asks a question| D[💬 Q&A Chat]
+    D -->|Retrieve top-5 chunks| C
+    D -->|Generate answer| E[✨ Gemini 2.5 Flash]
+    E -->|Answer + Source + Confidence| A
+
+    A -->|Requests quiz| F[📝 Quiz Generator]
+    F -->|Retrieve relevant chunks| C
+    F -->|Generate MCQ / Short / Formula| E
+
+    A -->|Requests flashcards| G[🃏 Flashcard Generator]
+    G -->|Retrieve key concepts| C
+    G -->|Generate cards + SM-2 schedule| E
+
+    E -->|All results saved| H[(💾 SQLite Database)]
+    H -->|Scores + streaks + weak topics| I[📊 Progress Dashboard]
+    I --> A
+
+    style A fill:#7c6af7,color:#fff
+    style E fill:#FF6B35,color:#fff
+    style C fill:#9C27B0,color:#fff
+    style H fill:#2196F3,color:#fff
+    style I fill:#4CAF50,color:#fff
+```
 
 ---
 
@@ -20,105 +57,142 @@ Engineering students struggle to extract clear understanding from dense textbook
 
 ### 📄 Document Ingestion
 - Upload PDF, DOCX, and TXT files
-- Semantic chunking with 512-token chunks and 64-token overlap
-- Gemini embeddings stored in ChromaDB vector database
-- Per-user isolated knowledge base
+- Semantic chunking — 512 tokens with 64 token overlap
+- Gemini embeddings stored in ChromaDB
+- Every user gets their own isolated vector store
 
 ### 💬 RAG-Powered Q&A Chat
-- Ask questions grounded strictly in your uploaded material
-- Source citations with document name and page number
-- Confidence indicator (High / Medium / Low)
-- Conversation memory across messages
+- Answers grounded strictly in your uploaded material
+- Source citations — document name and page number on every answer
+- Confidence indicator — High / Medium / Low
+- Conversation memory — follow-up questions work naturally
 - LaTeX formula rendering for engineering equations
 
 ### 📝 Quiz Generator
-- Three question types: MCQ, Short Answer, Formula Recall
-- Three difficulty levels: Easy, Medium, Hard
-- AI evaluates short answer responses with detailed feedback
-- Per-topic score tracking feeds the progress dashboard
+- Three types — MCQ, Short Answer, Formula Recall
+- Three difficulty levels — Easy, Medium, Hard
+- Gemini evaluates short answers and gives detailed feedback
+- Scores saved per topic and feed into progress tracking
 
 ### 🃏 Flashcard System
-- AI-generated flashcards from your study material
-- SM-2 spaced repetition algorithm (same as Anki)
-- Cards scheduled based on your performance
-- Due-today queue for daily review habit
+- AI generates flashcards from your uploaded material
+- SM-2 spaced repetition algorithm — same as Anki
+- Cards scheduled based on how well you know them
+- Due-today queue shown on dashboard
 
 ### 📊 Progress Dashboard
-- Topic performance bar chart
-- Weak topic detection (below 60% accuracy)
-- Study streak tracker
-- Activity heatmap (last 30 days)
-- Flashcard breakdown (mastered / learning / new / due)
+- Topic accuracy bar chart
+- Weak topic detector — flags anything below 60%
+- Study streak counter
+- Activity heatmap — last 30 days
+- Flashcard breakdown — mastered / learning / new / due today
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ System Architecture
 
-**Frontend** → React + Vite + Tailwind + Recharts + KaTeX
+```mermaid
+flowchart LR
+    subgraph Frontend["⚛️ React Frontend"]
+        UI[Vite + Tailwind + Recharts + KaTeX]
+    end
 
-↕ REST API
+    subgraph Backend["⚡ FastAPI Backend"]
+        Auth[🔐 Auth / JWT]
+        RAG[🔍 RAG Engine]
+        QG[📝 Quiz Generator]
+        FC[🃏 Flashcard Generator]
+        SP[📊 Study Planner]
+    end
 
-**Backend** → FastAPI + Python 3.11
-- Auth / JWT
-- RAG Engine
-- Quiz & Flashcard Generator
-- Study Planner
+    subgraph AI["✨ Gemini 2.5 Flash"]
+        GEN[Text Generation]
+        EMB[Embeddings]
+    end
 
-↕ Gemini API
+    subgraph Storage["💾 Storage"]
+        VEC[(ChromaDB\nVectors)]
+        DB[(SQLite\nRelational)]
+    end
 
-**AI Layer** → Gemini 2.5 Flash
-- Text Generation
-- Embeddings (text-embedding-004)
+    Frontend -->|REST API| Backend
+    RAG --> AI
+    QG --> AI
+    FC --> AI
+    SP --> AI
+    RAG --> VEC
+    Backend --> DB
 
-↕ Storage
-
-**Vector DB** → ChromaDB (per-user isolated collections)
-
-**Relational DB** → SQLite → Users, Documents, Quizzes, Flashcards, Chat History
+    style Frontend fill:#61DAFB,color:#000
+    style Backend fill:#009688,color:#fff
+    style AI fill:#FF6B35,color:#fff
+    style Storage fill:#9C27B0,color:#fff
+```
 
 ---
 
-## 🔄 RAG Pipeline
+## 🔄 RAG Pipeline — Step by Step
 
-**Step 1 — Ingest**
-Upload PDF / DOCX / TXT → PyMuPDF extracts text page by page
+```mermaid
+flowchart LR
+    A[📄 Upload] -->|PyMuPDF / python-docx| B[Extract Text]
+    B -->|512 tokens\n64 overlap| C[Semantic Chunks]
+    C -->|text-embedding-004| D[Gemini Embeddings]
+    D -->|cosine similarity| E[(ChromaDB)]
 
-**Step 2 — Chunk**
-Text split into 512-token chunks with 64-token overlap to preserve context
+    F[❓ Question] -->|retrieval_query| G[Query Embedding]
+    G -->|top-5 similar| E
+    E --> H[Retrieved Chunks]
+    H -->|context + question| I[Gemini 2.5 Flash]
+    I --> J[✅ Answer\n+ Source Citation\n+ Confidence Score]
 
-**Step 3 — Embed**
-Gemini text-embedding-004 converts each chunk to a vector
+    style A fill:#7c6af7,color:#fff
+    style F fill:#7c6af7,color:#fff
+    style E fill:#9C27B0,color:#fff
+    style I fill:#FF6B35,color:#fff
+    style J fill:#4CAF50,color:#fff
+```
 
-**Step 4 — Store**
-Vectors stored in ChromaDB with document name and page metadata
+---
 
-**Step 5 — Retrieve**
-User question embedded → Top-5 most similar chunks fetched by cosine similarity
+## 📈 Spaced Repetition — SM-2 Algorithm
 
-**Step 6 — Generate**
-Gemini 2.5 Flash generates answer using retrieved chunks as context
+```mermaid
+flowchart LR
+    A[Review Card] --> B{Rate Quality\n0 to 5}
+    B -->|0-2 Forgot| C[Reset Interval\nReview Tomorrow]
+    B -->|3 Hard| D[Interval +1 day]
+    B -->|4 Good| E[Interval × Ease Factor]
+    B -->|5 Perfect| F[Long Interval\nEase Factor increases]
+    C --> G[Update next_review date]
+    D --> G
+    E --> G
+    F --> G
+    G --> H[Show in\nDue Today Queue]
 
-**Step 7 — Cite**
-Response includes source document, page number, and confidence score
+    style A fill:#7c6af7,color:#fff
+    style B fill:#FF6B35,color:#fff
+    style H fill:#4CAF50,color:#fff
+```
 
 ---
 
 ## 🛠️ Tech Stack
 
-| Layer | Technology |
-|---|---|
-| LLM | Gemini 2.5 Flash |
-| Embeddings | Gemini text-embedding-004 |
-| Vector DB | ChromaDB |
-| RAG Framework | LangChain |
-| Backend | FastAPI + Python 3.11 |
-| Database | SQLite + SQLAlchemy |
-| Frontend | React 18 + Vite |
-| Styling | Tailwind CSS |
-| Charts | Recharts |
-| Auth | JWT + bcrypt |
-| PDF Parsing | PyMuPDF |
-| Spaced Repetition | SM-2 Algorithm |
+| Layer | Technology | Purpose |
+|---|---|---|
+| LLM | Gemini 2.5 Flash | Text generation, quiz, flashcards |
+| Embeddings | Gemini text-embedding-004 | Document + query vectorization |
+| Vector DB | ChromaDB | Semantic similarity search |
+| RAG Framework | LangChain | Document chunking pipeline |
+| Backend | FastAPI + Python 3.11 | REST API |
+| Database | SQLite + SQLAlchemy | Users, quizzes, flashcards, chats |
+| Frontend | React 18 + Vite | UI |
+| Styling | Tailwind CSS | Design |
+| Charts | Recharts | Progress visualization |
+| Auth | JWT + bcrypt | Secure user sessions |
+| PDF Parsing | PyMuPDF | Text extraction |
+| Spaced Repetition | SM-2 Algorithm | Flashcard scheduling |
 
 ---
 
@@ -149,7 +223,7 @@ pip install "pydantic[email]"
 
 # Configure environment
 cp .env.example .env
-# Edit .env and add your GEMINI_API_KEY
+# Open .env and add your GEMINI_API_KEY
 ```
 
 ### 3. Frontend setup
@@ -159,6 +233,8 @@ npm install
 ```
 
 ### 4. Run the application
+
+Open two terminals:
 
 **Terminal 1 — Backend:**
 ```bash
@@ -174,68 +250,37 @@ npm run dev
 ```
 
 ### 5. Open in browser
+
 http://localhost:5173
+
+API documentation available at `http://localhost:8000/docs`
 
 ---
 
 ## 📁 Project Structure
 
-StudyBuddy/
-├── backend/
-│   ├── core/
-│   │   ├── config.py
-│   │   ├── database.py
-│   │   ├── auth.py
-│   │   └── dependencies.py
-│   ├── models/
-│   │   ├── user.py
-│   │   ├── document.py
-│   │   ├── chat_session.py
-│   │   ├── quiz_attempt.py
-│   │   └── flashcard.py
-│   ├── routes/
-│   │   ├── auth.py
-│   │   ├── documents.py
-│   │   ├── chat.py
-│   │   ├── quiz.py
-│   │   └── flashcards.py
-│   ├── services/
-│   │   ├── gemini.py
-│   │   ├── rag.py
-│   │   ├── document_processor.py
-│   │   ├── quiz_generator.py
-│   │   ├── flashcard_generator.py
-│   │   └── study_planner.py
-│   ├── main.py
-│   ├── requirements.txt
-│   └── .env.example
-├── frontend/
-│   └── src/
-│       ├── pages/
-│       │   ├── Login.jsx
-│       │   ├── Register.jsx
-│       │   ├── Dashboard.jsx
-│       │   ├── Chat.jsx
-│       │   ├── Quiz.jsx
-│       │   ├── Flashcards.jsx
-│       │   └── Progress.jsx
-│       ├── components/
-│       │   ├── Sidebar.jsx
-│       │   ├── FileUpload.jsx
-│       │   ├── SourceCitation.jsx
-│       │   └── ProtectedRoute.jsx
-│       ├── api/
-│       ├── context/
-│       └── hooks/
-├── eval/
-│   └── ragas_eval.py
-└── README.md
+**Backend** `backend/`
+- `core/` — config.py, database.py, auth.py, dependencies.py
+- `models/` — user.py, document.py, chat_session.py, quiz_attempt.py, flashcard.py
+- `routes/` — auth.py, documents.py, chat.py, quiz.py, flashcards.py
+- `services/` — gemini.py, rag.py, document_processor.py, quiz_generator.py, flashcard_generator.py, study_planner.py
+- `main.py` — FastAPI app entry point
+- `requirements.txt` — all Python dependencies
+- `.env.example` — environment variables template
+
+**Frontend** `frontend/src/`
+- `pages/` — Login, Register, Dashboard, Chat, Quiz, Flashcards, Progress
+- `components/` — Sidebar, FileUpload, SourceCitation, ProtectedRoute
+- `api/` — client.js, auth.js, documents.js, chat.js, quiz.js, flashcards.js
+- `context/` — AuthContext.jsx
+- `hooks/` — useAuth.js, useDocuments.js
+
+**Evaluation** `eval/`
+- `ragas_eval.py` — RAG quality testing with RAGAS metrics
 
 ---
 
 ## 🔑 Environment Variables
-
-Create `backend/.env` from `backend/.env.example`:
 
 ```env
 GEMINI_API_KEY=your_gemini_api_key_here
@@ -257,42 +302,25 @@ MAX_FILE_SIZE_MB=50
 | POST | `/api/auth/register` | Register new user |
 | POST | `/api/auth/login` | Login |
 | POST | `/api/documents/upload` | Upload study material |
-| GET | `/api/documents/` | List documents |
+| GET | `/api/documents/` | List all documents |
+| DELETE | `/api/documents/{id}` | Delete a document |
 | POST | `/api/chat/ask` | Ask a question |
-| GET | `/api/chat/sessions` | Get chat history |
-| POST | `/api/quiz/generate` | Generate quiz |
-| POST | `/api/quiz/submit` | Submit quiz results |
+| GET | `/api/chat/sessions` | Get all chat sessions |
+| POST | `/api/quiz/generate` | Generate quiz questions |
+| POST | `/api/quiz/submit` | Submit quiz and save score |
 | POST | `/api/flashcards/generate` | Generate flashcards |
 | POST | `/api/flashcards/{id}/review` | Submit SM-2 review |
-| GET | `/api/flashcards/stats` | Get flashcard stats |
-
-Full interactive API docs available at `http://localhost:8000/docs`
-
----
-
-## 📈 Spaced Repetition — SM-2 Algorithm
-
-Flashcards use the SM-2 algorithm — the same algorithm used by Anki:
-
-| Quality | Meaning | Result |
-|---|---|---|
-| 0 | Complete blackout | Reset — review tomorrow |
-| 1 | Wrong but recognized | Reset — review tomorrow |
-| 2 | Wrong but easy recall | Reset — review soon |
-| 3 | Correct with effort | Interval increases slowly |
-| 4 | Correct with hesitation | Interval increases |
-| 5 | Perfect recall | Long interval, high ease factor |
-
-Ease factor never drops below 1.3. Due cards shown on dashboard daily.
+| GET | `/api/flashcards/due` | Get cards due today |
+| GET | `/api/flashcards/stats` | Get flashcard statistics |
 
 ---
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
+2. Create a feature branch `git checkout -b feature/your-feature`
+3. Commit your changes `git commit -m 'Add your feature'`
+4. Push to branch `git push origin feature/your-feature`
 5. Open a Pull Request
 
 ---
@@ -302,5 +330,4 @@ Ease factor never drops below 1.3. Due cards shown on dashboard daily.
 **Twarit** — [@Twarit01](https://github.com/Twarit01)
 
 ---
-
-## ⭐ If this project helped you, give it a star on GitHub!
+⭐ If this project helped you, give it a star on GitHub!
