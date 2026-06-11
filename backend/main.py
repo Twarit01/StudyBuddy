@@ -48,13 +48,14 @@ from routes.documents import router as documents_router
 from routes.chat import router as chat_router
 from routes.quiz import router as quiz_router
 from routes.flashcards import router as flashcards_router
+from routes.progress import router as progress_router  
 
 app.include_router(auth_router,       prefix="/api/auth",       tags=["Auth"])
 app.include_router(documents_router,  prefix="/api/documents",  tags=["Documents"])
 app.include_router(chat_router,       prefix="/api/chat",       tags=["Chat"])
 app.include_router(quiz_router,       prefix="/api/quiz",       tags=["Quiz"])
 app.include_router(flashcards_router, prefix="/api/flashcards", tags=["Flashcards"])
-
+app.include_router(progress_router,   prefix="/api/progress",   tags=["Progress"])  
 
 # ── Health check ──────────────────────────────────────────────────────────────
 
