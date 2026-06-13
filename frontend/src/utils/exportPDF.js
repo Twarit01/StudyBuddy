@@ -374,3 +374,115 @@ export const exportProgressPDF = ({
   addFooter(doc)
   doc.save(`StudyBuddy_Progress_${userName.replace(' ', '_')}_${new Date().toISOString().split('T')[0]}.pdf`)
 }
+
+// ── Export Document Summary ───────────────────────────────────────────────────
+
+export const exportSummaryPDF = ({ summary, documentName }) => {
+  const doc = new jsPDF()
+  let y = addHeader(doc, 'Document Summary')
+
+  doc.setFillColor(240, 255, 248)
+  doc.roundedRect(14, y, 182, 12, 3, 3, 'F')
+  doc.setTextColor(0, 150, 100)
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'bold')
+  doc.text(`📋 ${documentName}`, 105, y + 8, { align: 'center' })
+  y += 20
+
+  doc.setTextColor(50, 50, 80)
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+
+  const lines = summary.split('\n').filter(l => l.trim())
+  lines.forEach(line => {
+    if (y > 270) { doc.addPage(); y = 20 }
+    if (line.startsWith('**') && line.endsWith('**')) {
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(124, 106, 247)
+      doc.setFontSize(10)
+      doc.text(line.replace(/\*\*/g, ''), 14, y)
+      y += 7
+    } else if (line.startsWith('- ') || line.startsWith('• ')) {
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(50, 50, 80)
+      doc.setFontSize(8.5)
+      const wrapped = doc.splitTextToSize('• ' + line.slice(2), 175)
+      wrapped.forEach(wl => {
+        if (y > 270) { doc.addPage(); y = 20 }
+        doc.text(wl, 18, y)
+        y += 5.5
+      })
+    } else {
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(50, 50, 80)
+      doc.setFontSize(8.5)
+      const wrapped = doc.splitTextToSize(line, 178)
+      wrapped.forEach(wl => {
+        if (y > 270) { doc.addPage(); y = 20 }
+        doc.text(wl, 14, y)
+        y += 5.5
+      })
+    }
+    y += 1
+  })
+
+  addFooter(doc)
+  doc.save(`StudyBuddy_Summary_${documentName.replace(/\.[^.]+$/, '')}_${new Date().toISOString().split('T')[0]}.pdf`)
+}
+
+
+// ── Export Formula Sheet ──────────────────────────────────────────────────────
+
+export const exportFormulaSheetPDF = ({ formulas, documentName }) => {
+  const doc = new jsPDF()
+  let y = addHeader(doc, 'Formula Sheet')
+
+  doc.setFillColor(255, 248, 235)
+  doc.roundedRect(14, y, 182, 12, 3, 3, 'F')
+  doc.setTextColor(180, 100, 0)
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'bold')
+  doc.text(`🧮 ${documentName}`, 105, y + 8, { align: 'center' })
+  y += 20
+
+  const sections = formulas.split('---').filter(s => s.trim())
+
+  sections.forEach(section => {
+    if (y > 250) { doc.addPage(); y = 20 }
+
+    const lines = section.trim().split('\n').filter(l => l.trim())
+    if (!lines.length) return
+
+    // Section box
+    doc.setFillColor(255, 250, 240)
+    doc.roundedRect(14, y - 2, 182, Math.min(lines.length * 6 + 8, 60), 3, 3, 'F')
+
+    lines.forEach(line => {
+      if (y > 270) { doc.addPage(); y = 20 }
+
+      if (line.startsWith('**') && line.endsWith('**')) {
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(180, 100, 0)
+        doc.setFontSize(10)
+        doc.text(line.replace(/\*\*/g, ''), 18, y)
+        y += 7
+      } else if (line.toLowerCase().startsWith('formula:')) {
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(124, 106, 247)
+        doc.setFontSize(10)
+        const wrapped = doc.splitTextToSize(line, 170)
+        wrapped.forEach(wl => { doc.text(wl, 18, y); y += 6 })
+      } else {
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(80, 60, 40)
+        doc.setFontSize(8.5)
+        const wrapped = doc.splitTextToSize(line, 170)
+        wrapped.forEach(wl => { doc.text(wl, 18, y); y += 5.5 })
+      }
+    })
+    y += 8
+  })
+
+  addFooter(doc)
+  doc.save(`StudyBuddy_Formulas_${documentName.replace(/\.[^.]+$/, '')}_${new Date().toISOString().split('T')[0]}.pdf`)
+}

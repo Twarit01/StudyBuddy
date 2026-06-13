@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import ProtectedRoute from './components/ProtectedRoute'
+import Documents from './pages/Documents'
 
 import Login      from './pages/Login'
 import Register   from './pages/Register'
@@ -39,6 +40,9 @@ export default function App() {
             } />
             <Route path="/quiz" element={
               <ProtectedRoute><AppLayout><Quiz /></AppLayout></ProtectedRoute>
+            } />
+            <Route path="/documents" element={
+              <ProtectedRoute><AppLayout><Documents /></AppLayout></ProtectedRoute>
             } />
             <Route path="/flashcards" element={
               <ProtectedRoute><AppLayout><Flashcards /></AppLayout></ProtectedRoute>

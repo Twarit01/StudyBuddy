@@ -28,11 +28,11 @@ export function useDocuments() {
     setUploadProgress(0)
     setError(null)
     try {
-      const data = await uploadDocument(file, (pct) => {
+      const data = await uploadDocument(file, null, (pct) => {
         setUploadProgress(pct)
       })
       // Add new document to list
-      setDocuments((prev) => [data.document, ...prev])
+      setDocuments((prev) => [data, ...prev])
       return data
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to upload document')
@@ -41,8 +41,7 @@ export function useDocuments() {
       setUploading(false)
       setUploadProgress(0)
     }
-  }, [])
-
+    }, [])
   // Delete a document
   const remove = useCallback(async (documentId) => {
     setError(null)
