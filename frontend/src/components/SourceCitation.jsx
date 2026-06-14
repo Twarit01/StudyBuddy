@@ -34,7 +34,7 @@ export default function SourceCitation({ sources, confidence }) {
           {sources.map((source, i) => (
             <div
               key={i}
-              className="bg-[#222230] border border-[#333344] rounded-lg p-2.5"
+              className="bg-[#222230] border border-[#334155] rounded-lg p-2.5"
             >
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-xs">📄</span>

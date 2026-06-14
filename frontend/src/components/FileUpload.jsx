@@ -55,7 +55,7 @@ export default function FileUpload({ onUpload, uploading, uploadProgress }) {
           transition-all duration-150
           ${dragging
             ? 'border-[#7c6af7] bg-[#7c6af7]/10'
-            : 'border-[#333344] hover:border-[#7c6af7] hover:bg-[#7c6af7]/5'
+            : 'border-[#334155] hover:border-[#7c6af7] hover:bg-[#7c6af7]/5'
           }
           ${uploading ? 'opacity-50 cursor-not-allowed' : ''}
         `}

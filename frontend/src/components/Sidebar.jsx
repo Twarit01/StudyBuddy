@@ -2,159 +2,83 @@ import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
-import { useDocuments } from '../hooks/useDocuments'
-import FileUpload from './FileUpload'
 
 const navItems = [
-  { path: '/dashboard',  icon: '🏠', label: 'Dashboard' },
-  { path: '/documents',  icon: '📁', label: 'Documents' },
-  { path: '/chat',       icon: '💬', label: 'Q&A Chat' },
-  { path: '/quiz',       icon: '📝', label: 'Quiz' },
-  { path: '/flashcards', icon: '🃏', label: 'Flashcards' },
-  { path: '/progress',   icon: '📊', label: 'Progress' },
+  { path: '/dashboard',  icon: 'ti-home',          label: 'Dashboard' },
+  { path: '/documents',  icon: 'ti-folder',        label: 'Documents' },
+  { path: '/chat',       icon: 'ti-message-circle',label: 'Chat Assistant' },
+  { path: '/flashcards', icon: 'ti-cards',         label: 'Flashcards' },
+  { path: '/quiz',       icon: 'ti-pencil',        label: 'Quizzes' },
+  { path: '/progress',   icon: 'ti-chart-bar',     label: 'Progress' },
 ]
 
 export default function Sidebar() {
-  const { user, logout }             = useAuth()
-  const { isDark, toggleTheme }      = useTheme()
-  const { documents, uploading, uploadProgress, upload, remove } = useDocuments()
-  const navigate                     = useNavigate()
-  const [uploadError, setUploadError] = useState(null)
-
-  const handleUpload = async (file) => {
-    try {
-      setUploadError(null)
-      await upload(file)
-    } catch (err) {
-      setUploadError(err.response?.data?.detail || 'Upload failed')
-    }
-  }
+  const { user, logout }        = useAuth()
+  const { isDark, toggleTheme } = useTheme()
+  const navigate = useNavigate()
 
   return (
-    <aside className="w-56 flex-shrink-0 bg-white dark:bg-[#18181f] border-r border-gray-200 dark:border-[#222230] flex flex-col h-full overflow-hidden transition-colors duration-200">
+    <aside className="w-60 flex-shrink-0 bg-white dark:bg-[#15151f] border-r border-surface-border dark:border-[#334155] flex flex-col h-full overflow-hidden transition-colors duration-200">
 
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-4 py-4 border-b border-gray-200 dark:border-[#222230]">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#7c6af7] to-[#5de0b0] flex items-center justify-center text-base">
-          🧠
+      <div className="flex items-center gap-2.5 px-5 py-5">
+        <div className="w-9 h-9 rounded-xl bg-primary-600 flex items-center justify-center text-white">
+          <i className="ti ti-book-2" style={{ fontSize: 18 }} aria-hidden="true"></i>
         </div>
         <div>
-          <div className="text-sm font-semibold text-gray-900 dark:text-white">StudyBuddy</div>
-          <div className="text-xs text-gray-500">AI Assistant</div>
+          <div className="text-sm font-semibold text-ink-900 dark:text-white">StudyBuddy AI</div>
         </div>
       </div>
 
       {/* Nav */}
-      <nav className="px-2 py-3 flex flex-col gap-0.5">
+      <nav className="px-3 flex flex-col gap-1 mt-1">
         {navItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             className={({ isActive }) =>
-              `flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-100
+              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-100
               ${isActive
-                ? 'bg-[#7c6af7]/15 text-[#7c6af7] font-medium'
-                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#222230] hover:text-gray-900 dark:hover:text-gray-200'
+                ? 'bg-primary-50 dark:bg-primary-600/15 text-primary-700 dark:text-primary-300'
+                : 'text-ink-500 dark:text-gray-400 hover:bg-surface-muted dark:hover:bg-[#1E293B] hover:text-ink-900 dark:hover:text-gray-200'
               }`
             }
           >
-            <span>{item.icon}</span>
+            <i className={`ti ${item.icon}`} style={{ fontSize: 18 }} aria-hidden="true"></i>
             <span>{item.label}</span>
           </NavLink>
         ))}
       </nav>
 
-      {/* Quick upload section */}
-      <div className="flex-1 overflow-y-auto px-3 py-2 border-t border-gray-200 dark:border-[#222230]">
-        <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-2 px-1 font-medium">
-          Quick Upload
-        </p>
+      <div className="flex-1" />
 
-        <FileUpload
-          onUpload={handleUpload}
-          uploading={uploading}
-          uploadProgress={uploadProgress}
-        />
-
-        {uploadError && (
-          <p className="mt-2 text-xs text-red-400">{uploadError}</p>
-        )}
-
-        {/* Recent documents — show max 3 */}
-        <div className="mt-2 flex flex-col gap-1">
-          {documents.length === 0 && !uploading && (
-            <p className="text-xs text-gray-400 text-center py-2">
-              No documents yet
-            </p>
-          )}
-          {documents.slice(0, 3).map((doc) => (
-            <div
-              key={doc.id}
-              className="flex items-center gap-2 bg-gray-100 dark:bg-[#222230] rounded-lg px-2.5 py-2 group"
-            >
-              <span className="text-xs">
-                {doc.file_type === 'pdf' ? '📕' : doc.file_type === 'docx' ? '📘' : '📄'}
-              </span>
-              <span
-                className="text-xs text-gray-700 dark:text-gray-300 flex-1 truncate"
-                title={doc.original_name}
-              >
-                {doc.original_name}
-              </span>
-              <button
-                onClick={() => remove(doc.id)}
-                className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400 transition-all text-xs"
-              >
-                ✕
-              </button>
-            </div>
-          ))}
-
-          {/* View all link if more than 3 docs */}
-          {documents.length > 3 && (
-            <button
-              onClick={() => navigate('/documents')}
-              className="text-xs text-[#7c6af7] hover:underline text-center py-1 mt-0.5"
-            >
-              View all {documents.length} documents →
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Bottom — theme toggle + user */}
-      <div className="px-3 py-3 border-t border-gray-200 dark:border-[#222230] flex flex-col gap-2">
-
-        {/* Theme toggle */}
+      {/* Bottom */}
+      <div className="px-3 py-4 border-t border-surface-border dark:border-[#334155] flex flex-col gap-1">
         <button
           onClick={toggleTheme}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#222230] hover:text-gray-900 dark:hover:text-gray-200 transition-colors w-full"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-ink-500 dark:text-gray-400 hover:bg-surface-muted dark:hover:bg-[#1E293B] hover:text-ink-900 dark:hover:text-gray-200 transition-colors"
         >
-          <span>{isDark ? '☀️' : '🌙'}</span>
+          <i className={`ti ${isDark ? 'ti-sun' : 'ti-moon'}`} style={{ fontSize: 18 }} aria-hidden="true"></i>
           <span>{isDark ? 'Light mode' : 'Dark mode'}</span>
         </button>
 
-        {/* User info + logout */}
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-full bg-[#7c6af7]/20 flex items-center justify-center text-xs font-semibold text-[#7c6af7]">
+        <div className="flex items-center gap-2.5 px-3 py-2.5 mt-1">
+          <div className="w-8 h-8 rounded-full bg-primary-600 flex items-center justify-center text-xs font-semibold text-white flex-shrink-0">
             {user?.full_name?.[0]?.toUpperCase() || 'U'}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-xs font-medium text-gray-900 dark:text-white truncate">
-              {user?.full_name}
-            </div>
-            <div className="text-[10px] text-gray-500 truncate">{user?.email}</div>
+            <div className="text-sm font-medium text-ink-900 dark:text-white truncate">{user?.full_name}</div>
+            <div className="text-xs text-ink-400 truncate">{user?.email}</div>
           </div>
           <button
             onClick={logout}
-            className="text-gray-400 hover:text-red-400 transition-colors text-xs"
+            className="text-ink-400 hover:text-red-500 transition-colors flex-shrink-0"
             title="Logout"
           >
-            ⏻
+            <i className="ti ti-logout" style={{ fontSize: 16 }} aria-hidden="true"></i>
           </button>
         </div>
       </div>
-
     </aside>
   )
 }
