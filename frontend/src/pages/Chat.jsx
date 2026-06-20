@@ -6,15 +6,23 @@ import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.min.css'
 
+const SUGGESTED_QUESTIONS = [
+  "Explain Newton's second law with examples",
+  "What is the difference between AC and DC circuits?",
+  "Summarize the key thermodynamics laws",
+  "What is Bernoulli's equation used for?",
+]
+
 export default function Chat() {
-  const [sessions, setSessions]             = useState([])
-  const [activeSession, setActiveSession]   = useState(null)
-  const [messages, setMessages]             = useState([])
-  const [input, setInput]                   = useState('')
-  const [loading, setLoading]               = useState(false)
+  const [sessions, setSessions]               = useState([])
+  const [activeSession, setActiveSession]     = useState(null)
+  const [messages, setMessages]               = useState([])
+  const [input, setInput]                     = useState('')
+  const [loading, setLoading]                 = useState(false)
   const [loadingMessages, setLoadingMessages] = useState(false)
   const messagesEndRef = useRef(null)
   const inputRef       = useRef(null)
+  const textareaRef    = useRef(null)
 
   useEffect(() => { loadSessions() }, [])
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
@@ -28,21 +36,24 @@ export default function Chat() {
     setLoadingMessages(true)
     try {
       const data = await getSessionMessages(sessionId)
-      setMessages(data)
-      setActiveSession(sessionId)
+      setMessages(data); setActiveSession(sessionId)
     } catch (err) { console.error(err) }
     finally { setLoadingMessages(false) }
   }
 
-  const handleNewChat = () => { setActiveSession(null); setMessages([]); inputRef.current?.focus() }
+  const handleNewChat = () => {
+    setActiveSession(null); setMessages([])
+    setTimeout(() => inputRef.current?.focus(), 50)
+  }
 
   const handleSend = async () => {
     const question = input.trim()
     if (!question || loading) return
     setInput('')
+    if (textareaRef.current) { textareaRef.current.style.height = 'auto' }
     setLoading(true)
-    const tempUserMsg = { id: Date.now(), role: 'user', content: question, created_at: new Date().toISOString() }
-    setMessages(prev => [...prev, tempUserMsg])
+    const tempMsg = { id: Date.now(), role: 'user', content: question, created_at: new Date().toISOString() }
+    setMessages(prev => [...prev, tempMsg])
     try {
       const data = await askQuestion(question, activeSession)
       if (!activeSession) { setActiveSession(data.session_id); loadSessions() }
@@ -50,7 +61,7 @@ export default function Chat() {
     } catch (err) {
       setMessages(prev => [...prev, {
         id: Date.now() + 1, role: 'assistant',
-        content: err.response?.data?.detail || 'Sorry, something went wrong.',
+        content: err.response?.data?.detail || 'Something went wrong. Please try again.',
         created_at: new Date().toISOString(),
       }])
     } finally { setLoading(false) }
@@ -65,148 +76,198 @@ export default function Chat() {
     } catch (err) { console.error(err) }
   }
 
-  const handleKeyDown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
+  }
+
+  const handleInput = (e) => {
+    e.target.style.height = 'auto'
+    e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px'
+  }
 
   return (
-    <div className="flex h-full overflow-hidden bg-surface-muted dark:bg-[#0F172A] transition-colors duration-200">
+    <div className="flex h-full overflow-hidden bg-[#F8FAFC] dark:bg-[#0F172A] transition-colors duration-200">
 
-      {/* Sessions sidebar */}
-      <div className="w-56 flex-shrink-0 bg-white dark:bg-[#1E293B] border-r border-surface-border dark:border-[#334155] flex flex-col">
-        <div className="p-3 border-b border-surface-border dark:border-[#334155]">
-          <button onClick={handleNewChat} className="w-full bg-primary-600 hover:bg-primary-700 text-white text-xs font-medium rounded-xl py-2.5 transition-colors flex items-center justify-center gap-1.5">
-            <i className="ti ti-plus" style={{ fontSize: 14 }} aria-hidden="true"></i>
+      {/* Sessions panel */}
+      <div className="w-56 flex-shrink-0 flex flex-col overflow-hidden bg-white dark:bg-[#111827] border-r border-[#F1F5F9] dark:border-[#1E293B]">
+
+        <div className="p-3 border-b border-[#F1F5F9] dark:border-[#1E293B]">
+          <button onClick={handleNewChat}
+            className="btn-primary w-full justify-center text-sm py-2">
+            <i className="ti ti-plus" style={{ fontSize: 15 }} aria-hidden="true"></i>
             New chat
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
+
+        <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-0.5">
+          <p className="text-label px-3 py-2 text-[#CBD5E1] dark:text-slate-600">Recent</p>
           {sessions.length === 0 ? (
-            <p className="text-xs text-ink-400 text-center py-4">No chats yet</p>
+            <div className="flex flex-col items-center py-8 text-center px-3">
+              <i className="ti ti-message-circle" style={{ fontSize: 24, color: '#CBD5E1' }} aria-hidden="true"></i>
+              <p className="text-caption mt-2 text-[#94A3B8]">No chats yet</p>
+            </div>
           ) : sessions.map(s => (
             <div
               key={s.id}
               onClick={() => loadMessages(s.id)}
-              className={`group flex items-center gap-2 px-3 py-2.5 rounded-xl cursor-pointer text-xs transition-colors
+              className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-xs transition-colors
                 ${activeSession === s.id
-                  ? 'bg-primary-50 dark:bg-primary-600/15 text-primary-700 dark:text-primary-300'
-                  : 'text-ink-500 dark:text-gray-400 hover:bg-surface-muted dark:hover:bg-[#1E293B]'
-                }`}
+                  ? 'bg-indigo-50 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300'
+                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-[#1E293B] hover:text-slate-900 dark:hover:text-slate-200'}`}
             >
-              <i className="ti ti-message-circle" style={{ fontSize: 14 }} aria-hidden="true"></i>
-              <span className="flex-1 truncate">{s.title}</span>
-              <button onClick={e => handleDeleteSession(e, s.id)} className="opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all">
-                <i className="ti ti-x" style={{ fontSize: 12 }} aria-hidden="true"></i>
+              <i className="ti ti-message-circle flex-shrink-0" style={{ fontSize: 13 }} aria-hidden="true"></i>
+              <span className="flex-1 truncate font-medium">{s.title}</span>
+              <button
+                onClick={e => handleDeleteSession(e, s.id)}
+                className="opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all flex-shrink-0"
+              >
+                <i className="ti ti-x" style={{ fontSize: 11 }} aria-hidden="true"></i>
               </button>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Chat area */}
+      {/* Chat main */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4 max-w-3xl mx-auto w-full">
 
-          {messages.length === 0 && !loadingMessages && (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-              <div className="w-14 h-14 rounded-2xl bg-primary-50 dark:bg-primary-600/15 text-primary-600 dark:text-primary-300 flex items-center justify-center mb-3">
-                <i className="ti ti-message-circle" style={{ fontSize: 26 }} aria-hidden="true"></i>
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-3xl mx-auto px-6 py-8 flex flex-col gap-6">
+
+            {messages.length === 0 && !loadingMessages && (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 bg-[#EEF2FF] dark:bg-indigo-500/15">
+                  <i className="ti ti-message-circle" style={{ fontSize: 26, color: '#6366F1' }} aria-hidden="true"></i>
+                </div>
+                <h2 className="text-lg font-semibold text-[#0F172A] dark:text-[#F8FAFC] mb-1" style={{ letterSpacing: '-0.3px' }}>
+                  Ask anything
+                </h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm leading-relaxed">
+                  Questions are answered using your uploaded documents — responses include source citations.
+                </p>
+
+                <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg">
+                  {SUGGESTED_QUESTIONS.map(q => (
+                    <button
+                      key={q}
+                      onClick={() => { setInput(q); inputRef.current?.focus() }}
+                      className="text-left text-xs px-4 py-3 rounded-xl transition-colors font-medium
+                        bg-white dark:bg-[#1E293B] border border-[#E2E8F0] dark:border-[#334155]
+                        text-slate-600 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-500/50
+                        hover:text-indigo-600 dark:hover:text-indigo-300 shadow-sm"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <h2 className="text-base font-semibold text-ink-900 dark:text-white mb-1">Ask anything</h2>
-              <p className="text-sm text-ink-500 max-w-xs">Upload study materials and ask questions grounded in your notes.</p>
-              <div className="mt-4 flex flex-col gap-2 w-full max-w-sm">
-                {[
-                  "Explain Newton's second law with examples",
-                  "What is the difference between AC and DC circuits?",
-                  "Summarize the key thermodynamics laws",
-                ].map(q => (
-                  <button
-                    key={q}
-                    onClick={() => setInput(q)}
-                    className="text-xs text-left bg-white dark:bg-[#1E293B] border border-surface-border dark:border-[#334155] hover:border-primary-300 rounded-xl px-4 py-2.5 text-ink-500 hover:text-ink-900 dark:hover:text-gray-200 transition-colors shadow-soft"
+            )}
+
+            {loadingMessages && (
+              <div className="flex justify-center py-12">
+                <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+
+            {messages.map(msg => (
+              <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+
+                {msg.role === 'assistant' && (
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+                    style={{ background: 'linear-gradient(135deg, #6366F1, #4F46E5)' }}>
+                    <i className="ti ti-sparkles text-white" style={{ fontSize: 15 }} aria-hidden="true"></i>
+                  </div>
+                )}
+
+                <div className={`flex flex-col max-w-[78%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                  <div
+                    className={`px-4 py-3 rounded-2xl text-sm leading-relaxed
+                      ${msg.role === 'user'
+                        ? 'text-white rounded-tr-sm'
+                        : 'rounded-tl-sm bg-white dark:bg-[#1E293B] border border-[#F1F5F9] dark:border-[#334155] text-slate-700 dark:text-slate-200 shadow-sm'}`}
+                    style={msg.role === 'user' ? { background: 'linear-gradient(135deg, #6366F1, #4F46E5)' } : undefined}
                   >
-                    {q}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+                    {msg.role === 'assistant' ? (
+                      <div className="markdown">
+                        <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                          {msg.content}
+                        </ReactMarkdown>
+                      </div>
+                    ) : msg.content}
+                  </div>
 
-          {loadingMessages && (
-            <div className="flex justify-center py-8">
-              <div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
-            </div>
-          )}
-
-          {messages.map(msg => (
-            <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              {msg.role === 'assistant' && (
-                <div className="w-8 h-8 rounded-xl bg-primary-600 flex items-center justify-center text-white flex-shrink-0 mt-0.5">
-                  <i className="ti ti-sparkles" style={{ fontSize: 16 }} aria-hidden="true"></i>
-                </div>
-              )}
-              <div className={`max-w-[75%] flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed
-                  ${msg.role === 'user'
-                    ? 'bg-primary-600 text-white rounded-tr-sm'
-                    : 'bg-white dark:bg-[#1E293B] border border-surface-border dark:border-[#334155] text-ink-700 dark:text-gray-200 rounded-tl-sm shadow-soft'
-                  }`}>
-                  {msg.role === 'assistant' ? (
-                    <div className="markdown">
-                      <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                        {msg.content}
-                      </ReactMarkdown>
+                  {msg.role === 'assistant' && msg.sources && (
+                    <div className="mt-2 w-full">
+                      <SourceCitation
+                        sources={typeof msg.sources === 'string' ? JSON.parse(msg.sources) : msg.sources}
+                        confidence={msg.confidence}
+                      />
                     </div>
-                  ) : msg.content}
+                  )}
+
+                  <p className="text-[10px] mt-1.5 px-1 text-[#CBD5E1] dark:text-slate-600">
+                    {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </p>
                 </div>
-                {msg.role === 'assistant' && msg.sources && (
-                  <div className="mt-1 w-full">
-                    <SourceCitation
-                      sources={typeof msg.sources === 'string' ? JSON.parse(msg.sources) : msg.sources}
-                      confidence={msg.confidence}
-                    />
+
+                {msg.role === 'user' && (
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-[#EEF2FF] dark:bg-indigo-500/15">
+                    U
                   </div>
                 )}
               </div>
-              {msg.role === 'user' && (
-                <div className="w-8 h-8 rounded-xl bg-surface-muted dark:bg-[#334155] flex items-center justify-center text-xs flex-shrink-0 mt-0.5 font-medium text-ink-700 dark:text-gray-300">U</div>
-              )}
-            </div>
-          ))}
+            ))}
 
-          {loading && (
-            <div className="flex gap-3 justify-start">
-              <div className="w-8 h-8 rounded-xl bg-primary-600 flex items-center justify-center text-white flex-shrink-0">
-                <i className="ti ti-sparkles" style={{ fontSize: 16 }} aria-hidden="true"></i>
-              </div>
-              <div className="bg-white dark:bg-[#1E293B] border border-surface-border dark:border-[#334155] rounded-2xl rounded-tl-sm px-4 py-3 shadow-soft">
-                <div className="flex gap-1.5 items-center">
-                  <div className="typing-dot" /><div className="typing-dot" /><div className="typing-dot" />
+            {loading && (
+              <div className="flex gap-3 justify-start">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'linear-gradient(135deg, #6366F1, #4F46E5)' }}>
+                  <i className="ti ti-sparkles text-white" style={{ fontSize: 15 }} aria-hidden="true"></i>
+                </div>
+                <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-white dark:bg-[#1E293B] border border-[#F1F5F9] dark:border-[#334155] shadow-sm">
+                  <div className="flex gap-1.5 items-center h-4">
+                    <div className="typing-dot" />
+                    <div className="typing-dot" />
+                    <div className="typing-dot" />
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
+            )}
+
+            <div ref={messagesEndRef} />
+          </div>
         </div>
 
-        <div className="p-4 border-t border-surface-border dark:border-[#334155] bg-white dark:bg-[#1E293B] transition-colors">
-          <div className="max-w-3xl mx-auto flex gap-2 items-end">
-            <textarea
-              ref={inputRef} value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask a question about your study material..."
-              rows={1}
-              className="flex-1 bg-surface-muted dark:bg-[#1E293B] border border-surface-border dark:border-[#334155] focus:border-primary-400 rounded-xl px-4 py-2.5 text-sm text-ink-900 dark:text-white placeholder-ink-400 outline-none resize-none transition-colors"
-              style={{ maxHeight: '120px', overflowY: 'auto' }}
-              onInput={e => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px' }}
-            />
-            <button
-              onClick={handleSend} disabled={loading || !input.trim()}
-              className="bg-primary-600 hover:bg-primary-700 disabled:opacity-40 text-white rounded-xl w-10 h-10 flex items-center justify-center flex-shrink-0 transition-colors"
-            >
-              <i className="ti ti-arrow-up" style={{ fontSize: 16 }} aria-hidden="true"></i>
-            </button>
+        {/* Input bar */}
+        <div className="px-6 py-4 bg-white dark:bg-[#111827] border-t border-[#F1F5F9] dark:border-[#1E293B]">
+          <div className="max-w-3xl mx-auto">
+            <div className="flex items-end gap-3 p-3 rounded-2xl transition-all bg-[#F8FAFC] dark:bg-[#0F172A] border border-[#E2E8F0] dark:border-[#334155]">
+              <textarea
+                ref={el => { inputRef.current = el; textareaRef.current = el }}
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onInput={handleInput}
+                placeholder="Ask a question about your study material..."
+                rows={1}
+                className="flex-1 bg-transparent text-sm text-[#0F172A] dark:text-[#F8FAFC] placeholder-slate-400 dark:placeholder-slate-500 outline-none resize-none"
+                style={{ maxHeight: '140px', lineHeight: '1.6' }}
+              />
+              <button
+                onClick={handleSend}
+                disabled={loading || !input.trim()}
+                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all disabled:opacity-40"
+                style={{ background: input.trim() ? 'linear-gradient(135deg, #6366F1, #4F46E5)' : 'var(--send-btn-bg)' }}
+              >
+                <style>{`:root{--send-btn-bg:#E2E8F0}.dark{--send-btn-bg:#334155}`}</style>
+                <i className="ti ti-arrow-up" style={{ fontSize: 16, color: input.trim() ? '#ffffff' : '#94A3B8' }} aria-hidden="true"></i>
+              </button>
+            </div>
+            <p className="text-[10px] text-center mt-2 text-[#CBD5E1] dark:text-slate-600">
+              Enter to send · Shift+Enter for new line · Answers grounded in your documents
+            </p>
           </div>
-          <p className="text-xs text-ink-400 mt-2 text-center">Enter to send · Shift+Enter for new line</p>
         </div>
       </div>
     </div>

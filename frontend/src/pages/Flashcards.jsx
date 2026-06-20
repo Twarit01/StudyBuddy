@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react'
 import { generateFlashcards, getAllFlashcards, getDueFlashcards, reviewFlashcard, deleteAllFlashcards } from '../api/flashcards'
 
+const QUALITY_BUTTONS = [
+  { quality: 0, label: 'Forgot',  sub: 'Reset',         bg: '#FEF2F2', darkBg: 'rgba(239,68,68,0.1)',  border: '#FECACA', darkBorder: 'rgba(239,68,68,0.3)',  color: '#DC2626' },
+  { quality: 2, label: 'Hard',    sub: 'Almost',        bg: '#FFFBEB', darkBg: 'rgba(245,158,11,0.1)', border: '#FDE68A', darkBorder: 'rgba(245,158,11,0.3)', color: '#D97706' },
+  { quality: 3, label: 'Good',    sub: 'Got it',        bg: '#ECFDF5', darkBg: 'rgba(16,185,129,0.1)', border: '#A7F3D0', darkBorder: 'rgba(16,185,129,0.3)', color: '#059669' },
+  { quality: 5, label: 'Perfect', sub: 'Long interval', bg: '#EEF2FF', darkBg: 'rgba(99,102,241,0.1)', border: '#C7D2FE', darkBorder: 'rgba(99,102,241,0.3)', color: '#4F46E5' },
+]
+
 export default function Flashcards() {
   const [cards, setCards]               = useState([])
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -12,6 +19,15 @@ export default function Flashcards() {
   const [config, setConfig]             = useState({ topic: '', count: 10 })
   const [sessionStats, setSessionStats] = useState({ correct: 0, wrong: 0 })
   const [finished, setFinished]         = useState(false)
+  const [isDark, setIsDark]             = useState(false)
+
+  useEffect(() => {
+    const check = () => setIsDark(document.documentElement.classList.contains('dark'))
+    check()
+    const observer = new MutationObserver(check)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => { fetchCards() }, [mode])
 
@@ -28,10 +44,8 @@ export default function Flashcards() {
 
   const handleGenerate = async () => {
     setGenerating(true); setError(null)
-    try {
-      await generateFlashcards(config.topic || null, config.count)
-      await fetchCards()
-    } catch (err) { setError(err.response?.data?.detail || 'Failed to generate flashcards') }
+    try { await generateFlashcards(config.topic || null, config.count); await fetchCards() }
+    catch (err) { setError(err.response?.data?.detail || 'Failed to generate') }
     finally { setGenerating(false) }
   }
 
@@ -43,7 +57,7 @@ export default function Flashcards() {
         correct: quality >= 3 ? prev.correct + 1 : prev.correct,
         wrong:   quality < 3  ? prev.wrong + 1  : prev.wrong,
       }))
-      if (currentIndex + 1 >= cards.length) { setFinished(true) }
+      if (currentIndex + 1 >= cards.length) setFinished(true)
       else { setCurrentIndex(prev => prev + 1); setFlipped(false) }
     } catch (err) { console.error(err) }
   }
@@ -55,62 +69,74 @@ export default function Flashcards() {
   }
 
   const currentCard = cards[currentIndex]
-  const progress = cards.length > 0 ? Math.round((currentIndex / cards.length) * 100) : 0
+  const progress = cards.length > 0 ? (currentIndex / cards.length) * 100 : 0
 
   return (
-    <div className="h-full overflow-y-auto bg-surface-muted dark:bg-[#0F172A] transition-colors duration-200 p-6">
-      <div className="max-w-3xl mx-auto">
+    <div className="h-full overflow-y-auto bg-[#F8FAFC] dark:bg-[#0F172A] transition-colors duration-200">
+      <div className="max-w-2xl mx-auto px-8 py-8">
 
-        <div className="flex items-center justify-between mb-6">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-semibold text-ink-900 dark:text-white">Flashcards</h1>
-            <p className="text-sm text-ink-500 mt-1">Spaced repetition powered by the SM-2 algorithm</p>
+            <h1 className="text-display text-[#0F172A] dark:text-[#F8FAFC]">Flashcards</h1>
+            <p className="text-body mt-1 text-[#64748B] dark:text-[#94A3B8]">Spaced repetition powered by the SM-2 algorithm</p>
           </div>
           {cards.length > 0 && (
-            <button onClick={handleDeleteAll} className="text-xs text-ink-400 hover:text-red-500 transition-colors flex items-center gap-1.5">
-              <i className="ti ti-trash" style={{ fontSize: 14 }} aria-hidden="true"></i>
+            <button onClick={handleDeleteAll} className="btn-secondary text-xs py-1.5 px-3 text-red-500 border-red-200 dark:border-red-500/30 hover:bg-red-50 dark:hover:bg-red-500/10">
+              <i className="ti ti-trash" style={{ fontSize: 13 }} aria-hidden="true"></i>
               Delete all
             </button>
           )}
         </div>
 
-        {/* Generate */}
-        <div className="bg-white dark:bg-[#1E293B] border border-surface-border dark:border-[#334155] rounded-2xl p-4 mb-6 shadow-soft">
-          <p className="text-xs font-medium text-ink-500 mb-3">Generate new cards</p>
+        {/* Generate panel */}
+        <div className="p-5 mb-6 rounded-2xl border bg-white dark:bg-[#1E293B] border-[#E2E8F0] dark:border-[#334155] shadow-sm">
+          <h2 className="text-title text-[#0F172A] dark:text-[#F8FAFC] mb-4">Generate flashcards</h2>
           <div className="flex gap-3 flex-wrap">
             <input
               type="text" value={config.topic}
               onChange={e => setConfig({ ...config, topic: e.target.value })}
-              placeholder="Topic (optional)"
-              className="bg-surface-muted dark:bg-[#1E293B] border border-surface-border dark:border-[#334155] focus:border-primary-400 rounded-xl px-3 py-2 text-sm text-ink-900 dark:text-white placeholder-ink-400 outline-none transition-colors flex-1 min-w-[160px]"
+              placeholder="Topic (optional — leave blank for all documents)"
+              className="flex-1 min-w-[200px] rounded-lg px-3 py-2 text-sm outline-none border transition-colors
+                bg-[#F8FAFC] dark:bg-[#0F172A] border-[#E2E8F0] dark:border-[#334155]
+                text-[#0F172A] dark:text-[#F8FAFC] placeholder-slate-400 focus:border-indigo-400"
             />
             <select
               value={config.count}
               onChange={e => setConfig({ ...config, count: Number(e.target.value) })}
-              className="bg-surface-muted dark:bg-[#1E293B] border border-surface-border dark:border-[#334155] rounded-xl px-3 py-2 text-sm text-ink-900 dark:text-white outline-none"
+              className="rounded-lg px-3 py-2 text-sm outline-none border w-auto
+                bg-[#F8FAFC] dark:bg-[#0F172A] border-[#E2E8F0] dark:border-[#334155]
+                text-[#0F172A] dark:text-[#F8FAFC]"
             >
               {[5,10,15,20].map(n => <option key={n} value={n}>{n} cards</option>)}
             </select>
-            <button
-              onClick={handleGenerate} disabled={generating}
-              className="bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white text-sm font-medium rounded-xl px-4 py-2 transition-colors flex items-center gap-2"
-            >
-              {generating ? <><div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Generating...</> : <><i className="ti ti-sparkles" style={{ fontSize: 16 }} aria-hidden="true"></i>Generate</>}
+            <button onClick={handleGenerate} disabled={generating} className="btn-primary text-sm">
+              {generating
+                ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Generating...</>
+                : <><i className="ti ti-sparkles" style={{ fontSize: 15 }} aria-hidden="true"></i>Generate</>}
             </button>
           </div>
-          {error && <p className="mt-2 text-xs text-red-500 bg-red-50 dark:bg-red-400/10 rounded-lg px-3 py-2">{error}</p>}
+          {error && (
+            <div className="mt-3 px-3 py-2 rounded-lg text-xs bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300">{error}</div>
+          )}
         </div>
 
-        {/* Mode toggle */}
+        {/* Mode tabs */}
         {cards.length > 0 && (
-          <div className="flex gap-2 mb-6">
-            {['all','due'].map(m => (
+          <div className="flex gap-1 mb-6 p-1 rounded-xl bg-white dark:bg-[#1E293B] border border-[#E2E8F0] dark:border-[#334155]">
+            {[
+              { id: 'all',  label: `All cards (${cards.length})` },
+              { id: 'due',  label: 'Due today' },
+            ].map(m => (
               <button
-                key={m} onClick={() => setMode(m)}
-                className={`px-4 py-1.5 rounded-full text-xs font-medium transition-colors border
-                  ${mode === m ? 'bg-primary-600 border-primary-600 text-white' : 'bg-white dark:bg-[#1E293B] border-surface-border dark:border-[#334155] text-ink-500 hover:text-ink-900 dark:hover:text-gray-200'}`}
+                key={m.id} onClick={() => setMode(m.id)}
+                className="flex-1 py-2 rounded-lg text-xs font-medium transition-all"
+                style={{
+                  background: mode === m.id ? '#6366F1' : 'transparent',
+                  color: mode === m.id ? '#ffffff' : (isDark ? '#94A3B8' : '#64748B'),
+                }}
               >
-                {m === 'all' ? `All cards (${cards.length})` : 'Due today'}
+                {m.label}
               </button>
             ))}
           </div>
@@ -118,90 +144,132 @@ export default function Flashcards() {
 
         {loading && (
           <div className="flex justify-center py-16">
-            <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
           </div>
         )}
 
         {!loading && cards.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <i className="ti ti-cards text-ink-400" style={{ fontSize: 36 }} aria-hidden="true"></i>
-            <p className="text-sm text-ink-500 mt-3">No flashcards yet</p>
-            <p className="text-xs text-ink-400 mt-1">Upload study materials and click Generate above</p>
+          <div className="p-12 flex flex-col items-center text-center rounded-2xl border bg-white dark:bg-[#1E293B] border-[#E2E8F0] dark:border-[#334155] shadow-sm">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 bg-[#EEF2FF] dark:bg-indigo-500/15">
+              <i className="ti ti-cards" style={{ fontSize: 26, color: '#6366F1' }} aria-hidden="true"></i>
+            </div>
+            <p className="text-sm font-semibold text-[#0F172A] dark:text-[#F8FAFC] mb-1">No flashcards yet</p>
+            <p className="text-caption text-[#94A3B8]">Upload study materials and generate cards above</p>
           </div>
         )}
 
         {finished && (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-emerald-500/15 text-emerald-500 flex items-center justify-center mb-3">
-              <i className="ti ti-confetti" style={{ fontSize: 26 }} aria-hidden="true"></i>
+          <div className="p-12 flex flex-col items-center text-center rounded-2xl border bg-white dark:bg-[#1E293B] border-[#E2E8F0] dark:border-[#334155] shadow-sm">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 bg-[#ECFDF5] dark:bg-emerald-500/15">
+              <i className="ti ti-confetti" style={{ fontSize: 26, color: '#10B981' }} aria-hidden="true"></i>
             </div>
-            <h2 className="text-lg font-semibold text-ink-900 dark:text-white mb-1">Session complete!</h2>
-            <p className="text-sm text-ink-500 mb-4">{sessionStats.correct} correct · {sessionStats.wrong} to review</p>
+            <h2 className="text-lg font-semibold text-[#0F172A] dark:text-[#F8FAFC] mb-1" style={{ letterSpacing: '-0.3px' }}>Session complete!</h2>
+            <div className="flex gap-6 mt-2 mb-6">
+              <div className="text-center">
+                <div className="text-2xl font-bold" style={{ color: '#10B981', letterSpacing: '-0.5px' }}>{sessionStats.correct}</div>
+                <div className="text-caption text-[#94A3B8]">correct</div>
+              </div>
+              <div className="w-px bg-[#E2E8F0] dark:bg-[#334155]" />
+              <div className="text-center">
+                <div className="text-2xl font-bold" style={{ color: '#EF4444', letterSpacing: '-0.5px' }}>{sessionStats.wrong}</div>
+                <div className="text-caption text-[#94A3B8]">to review</div>
+              </div>
+            </div>
             <div className="flex gap-3">
-              <button onClick={fetchCards} className="bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-xl px-5 py-2.5 transition-colors">Study again</button>
-              <button onClick={() => setMode('due')} className="bg-white dark:bg-[#1E293B] border border-surface-border dark:border-[#334155] hover:border-primary-300 text-ink-700 dark:text-gray-300 text-sm font-medium rounded-xl px-5 py-2.5 transition-colors">Review due cards</button>
+              <button onClick={fetchCards} className="btn-primary text-sm">Study again</button>
+              <button onClick={() => setMode('due')} className="btn-secondary text-sm">Review due</button>
             </div>
           </div>
         )}
 
         {!loading && !finished && currentCard && (
-          <div className="max-w-xl mx-auto">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex-1 h-1.5 bg-surface-border dark:bg-[#334155] rounded-full overflow-hidden">
-                <div className="h-full bg-primary-500 rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
+          <div>
+            {/* Progress */}
+            <div className="flex items-center gap-4 mb-5">
+              <div className="flex-1 progress-bar">
+                <div className="progress-fill progress-fill-cyan" style={{ width: `${progress}%` }} />
               </div>
-              <span className="text-xs text-ink-400 font-mono flex-shrink-0">{currentIndex + 1} / {cards.length}</span>
+              <span className="text-xs font-mono text-slate-400 flex-shrink-0">
+                {currentIndex + 1} / {cards.length}
+              </span>
             </div>
 
-            <div className="flex gap-3 mb-4">
-              <span className="text-xs text-emerald-600 bg-emerald-50 dark:bg-emerald-400/10 dark:text-emerald-300 px-2.5 py-1 rounded-full">✓ {sessionStats.correct} correct</span>
-              <span className="text-xs text-red-500 bg-red-50 dark:bg-red-400/10 dark:text-red-300 px-2.5 py-1 rounded-full">✗ {sessionStats.wrong} to review</span>
-              {currentCard.topic && <span className="text-xs text-ink-500 bg-surface-muted dark:bg-[#334155] px-2.5 py-1 rounded-full">{currentCard.topic}</span>}
+            {/* Session stats */}
+            <div className="flex gap-3 mb-5">
+              <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: '#10B981' }}>
+                <i className="ti ti-check" style={{ fontSize: 14 }} aria-hidden="true"></i>
+                {sessionStats.correct} correct
+              </div>
+              <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: '#EF4444' }}>
+                <i className="ti ti-x" style={{ fontSize: 14 }} aria-hidden="true"></i>
+                {sessionStats.wrong} to review
+              </div>
+              {currentCard.topic && (
+                <span className="badge badge-indigo ml-auto">{currentCard.topic}</span>
+              )}
             </div>
 
-            <div className="flip-card cursor-pointer" style={{ height: '240px' }} onClick={() => setFlipped(prev => !prev)}>
+            {/* Card */}
+            <div
+              className="flip-card mb-5"
+              style={{ height: '260px' }}
+              onClick={() => setFlipped(prev => !prev)}
+            >
               <div className={`flip-card-inner ${flipped ? 'flipped' : ''}`}>
-                <div className="flip-card-front bg-white dark:bg-[#1E293B] border border-surface-border dark:border-[#334155] rounded-2xl flex flex-col items-center justify-center p-8 text-center shadow-soft">
-                  <p className="text-[10px] uppercase tracking-widest text-ink-400 mb-4 font-medium">Question</p>
-                  <p className="text-base font-medium text-ink-900 dark:text-white leading-relaxed">{currentCard.front}</p>
-                  <p className="text-xs text-ink-400 mt-4">Click to reveal answer</p>
+
+                {/* Front */}
+                <div className="flip-card-front rounded-2xl border flex flex-col items-center justify-center p-8 text-center cursor-pointer bg-white dark:bg-[#1E293B] border-[#E2E8F0] dark:border-[#334155] shadow-sm">
+                  <p className="text-label mb-4 text-[#CBD5E1] dark:text-slate-500">Question</p>
+                  <p className="text-base font-medium text-[#0F172A] dark:text-[#F8FAFC] leading-relaxed" style={{ letterSpacing: '-0.2px' }}>
+                    {currentCard.front}
+                  </p>
+                  <div className="flex items-center gap-2 mt-6 text-xs text-[#CBD5E1] dark:text-slate-500">
+                    <i className="ti ti-hand-click" style={{ fontSize: 14 }} aria-hidden="true"></i>
+                    Click to reveal answer
+                  </div>
                 </div>
-                <div className="flip-card-back bg-primary-50 dark:bg-primary-600/10 border border-primary-200 dark:border-primary-600/30 rounded-2xl flex flex-col items-center justify-center p-8 text-center">
-                  <p className="text-[10px] uppercase tracking-widest text-primary-600 dark:text-primary-300 mb-4 font-medium">Answer</p>
-                  <p className="text-base text-primary-700 dark:text-primary-200 leading-relaxed">{currentCard.back}</p>
+
+                {/* Back */}
+                <div className="flip-card-back flex flex-col items-center justify-center p-8 text-center cursor-pointer rounded-2xl border bg-[#EEF2FF] dark:bg-indigo-500/10 border-[#C7D2FE] dark:border-indigo-500/30">
+                  <p className="text-label mb-4 text-indigo-400 dark:text-indigo-300">Answer</p>
+                  <p className="text-base font-medium leading-relaxed text-indigo-700 dark:text-indigo-200" style={{ letterSpacing: '-0.2px' }}>
+                    {currentCard.back}
+                  </p>
                 </div>
               </div>
             </div>
 
-            {flipped && (
-              <div className="mt-6">
-                <p className="text-xs text-ink-400 text-center mb-3">How well did you know this?</p>
-                <div className="grid grid-cols-4 gap-2">
-                  {[
-                    { quality: 0, label: 'Forgot',  color: 'bg-red-50 dark:bg-red-500/15 hover:bg-red-100 dark:hover:bg-red-500/25 text-red-500 border-red-200 dark:border-red-500/30' },
-                    { quality: 2, label: 'Hard',     color: 'bg-amber-50 dark:bg-amber-500/15 hover:bg-amber-100 dark:hover:bg-amber-500/25 text-amber-500 border-amber-200 dark:border-amber-500/30' },
-                    { quality: 3, label: 'Good',     color: 'bg-yellow-50 dark:bg-yellow-500/15 hover:bg-yellow-100 dark:hover:bg-yellow-500/25 text-yellow-600 border-yellow-200 dark:border-yellow-500/30' },
-                    { quality: 5, label: 'Perfect',  color: 'bg-emerald-50 dark:bg-emerald-500/15 hover:bg-emerald-100 dark:hover:bg-emerald-500/25 text-emerald-600 border-emerald-200 dark:border-emerald-500/30' },
-                  ].map(btn => (
+            {/* Rating buttons */}
+            {flipped ? (
+              <div>
+                <p className="text-caption text-center mb-3 text-[#94A3B8]">How well did you know this?</p>
+                <div className="grid grid-cols-4 gap-2 mb-3">
+                  {QUALITY_BUTTONS.map(btn => (
                     <button
-                      key={btn.quality} onClick={() => handleReview(btn.quality)}
-                      className={`border rounded-xl py-2.5 text-xs font-medium transition-colors ${btn.color}`}
+                      key={btn.quality}
+                      onClick={() => handleReview(btn.quality)}
+                      className="flex flex-col items-center py-3 rounded-xl border transition-all hover:scale-105"
+                      style={{ background: isDark ? btn.darkBg : btn.bg, borderColor: isDark ? btn.darkBorder : btn.border }}
                     >
-                      {btn.label}
+                      <span className="text-sm font-semibold" style={{ color: btn.color }}>{btn.label}</span>
+                      <span className="text-[10px] mt-0.5 text-[#94A3B8]">{btn.sub}</span>
                     </button>
                   ))}
                 </div>
-                <p className="text-[10px] text-ink-400 text-center mt-2">SM-2 algorithm schedules your next review automatically</p>
+                <p className="text-[10px] text-center text-[#CBD5E1] dark:text-slate-500">
+                  SM-2 algorithm schedules your next review automatically
+                </p>
               </div>
-            )}
-
-            {!flipped && (
-              <div className="mt-4 flex justify-center">
+            ) : (
+              <div className="flex justify-center">
                 <button
-                  onClick={() => { if (currentIndex + 1 >= cards.length) setFinished(true); else { setCurrentIndex(prev => prev + 1); setFlipped(false) } }}
-                  className="text-xs text-ink-400 hover:text-ink-600 dark:hover:text-gray-300 transition-colors"
+                  onClick={() => {
+                    if (currentIndex + 1 >= cards.length) setFinished(true)
+                    else { setCurrentIndex(p => p + 1); setFlipped(false) }
+                  }}
+                  className="text-xs font-medium transition-colors text-[#CBD5E1] dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
                 >
-                  Skip →
+                  Skip this card →
                 </button>
               </div>
             )}

@@ -19,18 +19,23 @@ export default function Progress() {
   const [generatingPlan, setGeneratingPlan] = useState(false)
   const [planError, setPlanError]           = useState(null)
   const [showPlan, setShowPlan]             = useState(false)
+  const [isDark, setIsDark]                 = useState(false)
+
+  useEffect(() => {
+    const check = () => setIsDark(document.documentElement.classList.contains('dark'))
+    check()
+    const observer = new MutationObserver(check)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => { fetchAll() }, [])
 
   const fetchAll = async () => {
     setLoading(true)
     try {
-      const [history, fc] = await Promise.all([
-        getQuizHistory(),
-        getFlashcardStats(),
-      ])
-      setQuizHistory(history)
-      setFcStats(fc)
+      const [history, fc] = await Promise.all([getQuizHistory(), getFlashcardStats()])
+      setQuizHistory(history); setFcStats(fc)
 
       const topicMap = {}
       history.forEach((attempt) => {
@@ -39,13 +44,12 @@ export default function Progress() {
         topicMap[t].total   += attempt.total_questions
         topicMap[t].correct += attempt.correct_answers
       })
-      const stats = Object.entries(topicMap).map(([topic, s]) => ({
+      setTopicStats(Object.entries(topicMap).map(([topic, s]) => ({
         topic:     topic.length > 14 ? topic.slice(0, 14) + '…' : topic,
         fullTopic: topic,
         accuracy:  Math.round((s.correct / s.total) * 100),
         total:     s.total,
-      }))
-      setTopicStats(stats)
+      })))
 
       const activity = {}
       history.forEach((a) => {
@@ -57,33 +61,20 @@ export default function Progress() {
       let s = 0
       const today = new Date()
       for (let i = 0; i < 365; i++) {
-        const d = new Date(today)
-        d.setDate(d.getDate() - i)
+        const d = new Date(today); d.setDate(d.getDate() - i)
         const key = d.toISOString().split('T')[0]
-        if (activity[key]) s++
-        else if (i > 0) break
+        if (activity[key]) s++; else if (i > 0) break
       }
       setStreak(s)
-    } catch (err) {
-      console.error('Failed to load progress', err)
-    } finally {
-      setLoading(false)
-    }
+    } catch (err) { console.error('Failed to load progress', err) }
+    finally { setLoading(false) }
   }
 
   const handleGeneratePlan = async () => {
-    setGeneratingPlan(true)
-    setPlanError(null)
-    setShowPlan(false)
-    try {
-      const data = await getStudyPlan()
-      setStudyPlan(data)
-      setShowPlan(true)
-    } catch (err) {
-      setPlanError(err.response?.data?.detail || 'Failed to generate study plan')
-    } finally {
-      setGeneratingPlan(false)
-    }
+    setGeneratingPlan(true); setPlanError(null); setShowPlan(false)
+    try { const data = await getStudyPlan(); setStudyPlan(data); setShowPlan(true) }
+    catch (err) { setPlanError(err.response?.data?.detail || 'Failed to generate study plan') }
+    finally { setGeneratingPlan(false) }
   }
 
   const avgScore = quizHistory.length
@@ -91,27 +82,26 @@ export default function Progress() {
     : 0
 
   const statCards = [
-    { label: 'Quizzes taken',  value: quizHistory.length,    icon: 'ti-pencil',     color: 'bg-primary-50 text-primary-600 dark:bg-primary-600/15 dark:text-primary-300' },
-    { label: 'Average score',  value: avgScore + '%',         icon: 'ti-target-arrow', color: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300' },
-    { label: 'Cards mastered', value: fcStats.mastered || 0, icon: 'ti-cards',      color: 'bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300' },
-    { label: 'Study streak',   value: streak + ' days',       icon: 'ti-flame',      color: 'bg-pink-50 text-pink-600 dark:bg-pink-500/15 dark:text-pink-300' },
+    { label: 'Quizzes taken',  value: quizHistory.length,     icon: 'ti-pencil',         color: '#6366F1', bg: '#EEF2FF', darkBg: 'rgba(99,102,241,0.15)' },
+    { label: 'Average score',  value: avgScore + '%',          icon: 'ti-target-arrow',   color: '#10B981', bg: '#ECFDF5', darkBg: 'rgba(16,185,129,0.15)' },
+    { label: 'Cards mastered', value: fcStats.mastered || 0,  icon: 'ti-cards',          color: '#F59E0B', bg: '#FFFBEB', darkBg: 'rgba(245,158,11,0.15)' },
+    { label: 'Study streak',   value: streak + ' days',        icon: 'ti-flame',          color: '#EC4899', bg: '#FDF2F8', darkBg: 'rgba(236,72,153,0.15)' },
   ]
 
   const last30 = Array.from({ length: 30 }, (_, i) => {
-    const d = new Date()
-    d.setDate(d.getDate() - (29 - i))
+    const d = new Date(); d.setDate(d.getDate() - (29 - i))
     const key = d.toISOString().split('T')[0]
-    return { date: key, day: d.getDate(), count: activityMap[key] || 0 }
+    return { date: key, count: activityMap[key] || 0 }
   })
 
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload?.length) {
       const d = payload[0].payload
       return (
-        <div className="bg-white dark:bg-[#1E293B] border border-surface-border dark:border-[#334155] rounded-lg px-3 py-2 text-xs shadow-card">
-          <p className="font-medium text-ink-900 dark:text-white">{d.fullTopic}</p>
-          <p className="text-ink-500">{d.accuracy}% accuracy</p>
-          <p className="text-ink-400">{d.total} questions</p>
+        <div className="px-3 py-2 rounded-lg text-xs bg-white dark:bg-[#1E293B] border border-[#E2E8F0] dark:border-[#334155]" style={{ boxShadow: '0 4px 12px rgba(15,23,42,0.1)' }}>
+          <p className="font-semibold text-[#0F172A] dark:text-[#F8FAFC]">{d.fullTopic}</p>
+          <p className="text-[#64748B] dark:text-[#94A3B8]">{d.accuracy}% accuracy</p>
+          <p className="text-[#94A3B8]">{d.total} questions</p>
         </div>
       )
     }
@@ -119,124 +109,107 @@ export default function Progress() {
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-surface-muted dark:bg-[#0F172A] transition-colors duration-200 p-6">
-      <div className="max-w-6xl mx-auto">
+    <div className="h-full overflow-y-auto bg-[#F8FAFC] dark:bg-[#0F172A] transition-colors duration-200">
+      <div className="max-w-6xl mx-auto px-8 py-8">
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-ink-900 dark:text-white">Progress</h1>
-            <p className="text-sm text-ink-500 mt-1">Track your learning over time</p>
+            <h1 className="text-display text-[#0F172A] dark:text-[#F8FAFC]">Progress</h1>
+            <p className="text-body mt-1 text-[#64748B] dark:text-[#94A3B8]">Track your learning over time</p>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => exportProgressPDF({ quizHistory, fcStats, topicStats, streak })}
-              className="flex items-center gap-2 bg-white dark:bg-[#1E293B] border border-surface-border dark:border-[#334155] hover:border-primary-300 dark:hover:border-primary-600/40 text-ink-700 dark:text-gray-300 text-sm font-medium rounded-xl px-4 py-2.5 transition-colors shadow-soft"
-            >
-              <i className="ti ti-download" style={{ fontSize: 16 }} aria-hidden="true"></i>
+            <button onClick={() => exportProgressPDF({ quizHistory, fcStats, topicStats, streak })} className="btn-secondary text-sm">
+              <i className="ti ti-download" style={{ fontSize: 15 }} aria-hidden="true"></i>
               Export report
             </button>
-            <button
-              onClick={handleGeneratePlan}
-              disabled={generatingPlan}
-              className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white text-sm font-medium rounded-xl px-5 py-2.5 transition-colors shadow-soft"
-            >
-              {generatingPlan ? (
-                <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Generating...</>
-              ) : (
-                <><i className="ti ti-sparkles" style={{ fontSize: 16 }} aria-hidden="true"></i>Generate study plan</>
-              )}
+            <button onClick={handleGeneratePlan} disabled={generatingPlan} className="btn-primary text-sm">
+              {generatingPlan
+                ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Generating...</>
+                : <><i className="ti ti-sparkles" style={{ fontSize: 15 }} aria-hidden="true"></i>Generate study plan</>}
             </button>
           </div>
         </div>
 
-        {/* Study plan output */}
+        {/* Study plan */}
         {showPlan && studyPlan && (
-          <div className="bg-white dark:bg-[#1E293B] border border-primary-200 dark:border-primary-600/30 rounded-2xl p-5 mb-6 shadow-soft">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-primary-600 dark:text-primary-300 flex items-center gap-2">
-                <i className="ti ti-sparkles" style={{ fontSize: 16 }} aria-hidden="true"></i>
+          <div className="p-6 mb-6 rounded-2xl border bg-white dark:bg-[#1E293B] border-[#C7D2FE] dark:border-indigo-500/30 shadow-sm">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+              <h2 className="text-title flex items-center gap-2" style={{ color: '#4F46E5' }}>
+                <i className="ti ti-sparkles" style={{ fontSize: 17 }} aria-hidden="true"></i>
                 Your AI study plan
               </h2>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => exportStudyPlanPDF({ studyPlan })}
-                  className="text-xs bg-primary-600 hover:bg-primary-700 text-white px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
-                >
-                  <i className="ti ti-download" style={{ fontSize: 14 }} aria-hidden="true"></i>
-                  Download PDF
+              <div className="flex items-center gap-2">
+                <button onClick={() => exportStudyPlanPDF({ studyPlan })} className="btn-primary text-xs py-1.5 px-3">
+                  <i className="ti ti-download" style={{ fontSize: 13 }} aria-hidden="true"></i>
+                  Download
                 </button>
-                <button onClick={() => setShowPlan(false)} className="text-ink-400 hover:text-ink-600 text-xs">
+                <button onClick={() => setShowPlan(false)} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-[#334155] text-slate-400">
                   <i className="ti ti-x" style={{ fontSize: 14 }} aria-hidden="true"></i>
                 </button>
               </div>
             </div>
             {studyPlan.weak_topics?.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3">
+              <div className="flex flex-wrap gap-2 mb-4">
                 {studyPlan.weak_topics.map((t) => (
-                  <span key={t.topic} className="text-xs bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-300 px-2.5 py-1 rounded-full">
-                    ⚠ {t.topic} — {t.accuracy}%
-                  </span>
+                  <span key={t.topic} className="badge badge-red">⚠ {t.topic} — {t.accuracy}%</span>
                 ))}
               </div>
             )}
             {studyPlan.due_cards_today > 0 && (
-              <p className="text-xs text-emerald-600 dark:text-emerald-300 mb-3">
+              <p className="text-sm mb-4 flex items-center gap-1.5" style={{ color: '#0891B2' }}>
+                <i className="ti ti-calendar-event" style={{ fontSize: 15 }} aria-hidden="true"></i>
                 {studyPlan.due_cards_today} flashcard{studyPlan.due_cards_today > 1 ? 's' : ''} due today
               </p>
             )}
-            <div className="text-sm text-ink-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-              {studyPlan.study_plan}
-            </div>
+            <div className="text-sm leading-relaxed whitespace-pre-wrap text-[#374151] dark:text-[#CBD5E1]">{studyPlan.study_plan}</div>
           </div>
         )}
 
         {planError && (
-          <div className="bg-red-50 dark:bg-red-400/10 border border-red-200 dark:border-red-400/30 rounded-xl px-4 py-3 text-sm text-red-500 dark:text-red-400 mb-6">
-            {planError}
-          </div>
+          <div className="px-4 py-3 rounded-xl text-sm mb-6 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300">{planError}</div>
         )}
 
         {loading ? (
           <div className="flex justify-center py-20">
-            <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
           <>
-            {/* Stat cards */}
+            {/* Stats */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
               {statCards.map((card) => (
-                <div key={card.label} className="bg-white dark:bg-[#1E293B] border border-surface-border dark:border-[#334155] rounded-xl p-4 shadow-soft">
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center mb-3 ${card.color}`}>
-                    <i className={`ti ${card.icon}`} style={{ fontSize: 18 }} aria-hidden="true"></i>
+                <div key={card.label} className="p-5 rounded-2xl border bg-white dark:bg-[#1E293B] border-[#E2E8F0] dark:border-[#334155] shadow-sm">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-4" style={{ background: isDark ? card.darkBg : card.bg }}>
+                    <i className={`ti ${card.icon}`} style={{ fontSize: 18, color: card.color }} aria-hidden="true"></i>
                   </div>
-                  <div className="text-xl font-semibold text-ink-900 dark:text-white">{card.value}</div>
-                  <div className="text-xs text-ink-400 mt-0.5">{card.label}</div>
+                  <div className="text-2xl font-semibold text-[#0F172A] dark:text-[#F8FAFC]" style={{ letterSpacing: '-0.5px' }}>{card.value}</div>
+                  <div className="text-caption mt-1 text-[#94A3B8]">{card.label}</div>
                 </div>
               ))}
             </div>
 
             {/* Topic chart */}
-            <div className="bg-white dark:bg-[#1E293B] border border-surface-border dark:border-[#334155] rounded-2xl p-5 mb-4 shadow-soft">
-              <h2 className="text-sm font-semibold text-ink-900 dark:text-white mb-4">Topic performance</h2>
+            <div className="p-6 mb-6 rounded-2xl border bg-white dark:bg-[#1E293B] border-[#E2E8F0] dark:border-[#334155] shadow-sm">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-title text-[#0F172A] dark:text-[#F8FAFC]">Topic performance</h2>
+                <span className="badge badge-cyan">By accuracy</span>
+              </div>
               {topicStats.length === 0 ? (
-                <div className="flex flex-col items-center py-8 text-center">
-                  <i className="ti ti-chart-bar text-ink-400" style={{ fontSize: 28 }} aria-hidden="true"></i>
-                  <p className="text-sm text-ink-500 mt-2">No quiz data yet</p>
-                  <p className="text-xs text-ink-400 mt-1">Take a quiz to see your topic breakdown</p>
+                <div className="flex flex-col items-center py-10 text-center">
+                  <i className="ti ti-chart-bar" style={{ fontSize: 28, color: '#CBD5E1' }} aria-hidden="true"></i>
+                  <p className="text-sm font-medium text-[#0F172A] dark:text-[#F8FAFC] mt-3">No quiz data yet</p>
+                  <p className="text-caption mt-1 text-[#94A3B8]">Take a quiz to see your topic breakdown</p>
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height={200}>
+                <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={topicStats} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                    <XAxis dataKey="topic" tick={{ fill: '#9999b0', fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: '#9999b0', fontSize: 11 }} axisLine={false} tickLine={false} domain={[0, 100]} />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(139,92,246,0.05)' }} />
-                    <Bar dataKey="accuracy" radius={[4, 4, 0, 0]}>
+                    <XAxis dataKey="topic" tick={{ fill: isDark ? '#64748B' : '#94A3B8', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: isDark ? '#64748B' : '#94A3B8', fontSize: 11 }} axisLine={false} tickLine={false} domain={[0, 100]} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(99,102,241,0.08)' }} />
+                    <Bar dataKey="accuracy" radius={[6, 6, 0, 0]}>
                       {topicStats.map((entry, index) => (
-                        <Cell
-                          key={index}
-                          fill={entry.accuracy >= 80 ? '#10b981' : entry.accuracy >= 60 ? '#f59e0b' : '#ef4444'}
-                        />
+                        <Cell key={index} fill={entry.accuracy >= 80 ? '#10B981' : entry.accuracy >= 60 ? '#F59E0B' : '#EF4444'} />
                       ))}
                     </Bar>
                   </BarChart>
@@ -244,79 +217,79 @@ export default function Progress() {
               )}
             </div>
 
-            {/* Flashcard + Activity */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
-              <div className="bg-white dark:bg-[#1E293B] border border-surface-border dark:border-[#334155] rounded-2xl p-5 shadow-soft">
-                <h2 className="text-sm font-semibold text-ink-900 dark:text-white mb-4">Flashcard breakdown</h2>
-                <div className="flex flex-col gap-3">
+              {/* Flashcard breakdown */}
+              <div className="p-6 rounded-2xl border bg-white dark:bg-[#1E293B] border-[#E2E8F0] dark:border-[#334155] shadow-sm">
+                <h2 className="text-title text-[#0F172A] dark:text-[#F8FAFC] mb-5">Flashcard breakdown</h2>
+                <div className="flex flex-col gap-4">
                   {[
-                    { label: 'Total cards',  value: fcStats.total     || 0, color: 'bg-ink-400' },
-                    { label: 'Mastered',     value: fcStats.mastered  || 0, color: 'bg-emerald-500' },
-                    { label: 'Learning',     value: fcStats.learning  || 0, color: 'bg-amber-500' },
-                    { label: 'New',          value: fcStats.new       || 0, color: 'bg-primary-500' },
-                    { label: 'Due today',    value: fcStats.due_today || 0, color: 'bg-pink-500' },
+                    { label: 'Total cards', value: fcStats.total     || 0, color: '#94A3B8' },
+                    { label: 'Mastered',    value: fcStats.mastered  || 0, color: '#10B981' },
+                    { label: 'Learning',    value: fcStats.learning  || 0, color: '#F59E0B' },
+                    { label: 'New',         value: fcStats.new       || 0, color: '#6366F1' },
+                    { label: 'Due today',   value: fcStats.due_today || 0, color: '#EC4899' },
                   ].map((item) => (
                     <div key={item.label} className="flex items-center gap-3">
-                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${item.color}`} />
-                      <span className="text-sm text-ink-500 flex-1">{item.label}</span>
-                      <span className="text-sm font-medium text-ink-900 dark:text-white">{item.value}</span>
+                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: item.color }} />
+                      <span className="text-sm flex-1 text-[#64748B] dark:text-[#94A3B8]">{item.label}</span>
+                      <span className="text-sm font-semibold text-[#0F172A] dark:text-[#F8FAFC]">{item.value}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-[#1E293B] border border-surface-border dark:border-[#334155] rounded-2xl p-5 shadow-soft">
-                <h2 className="text-sm font-semibold text-ink-900 dark:text-white mb-4">Activity — last 30 days</h2>
+              {/* Activity heatmap */}
+              <div className="p-6 rounded-2xl border bg-white dark:bg-[#1E293B] border-[#E2E8F0] dark:border-[#334155] shadow-sm">
+                <h2 className="text-title text-[#0F172A] dark:text-[#F8FAFC] mb-5">Activity — last 30 days</h2>
                 <div className="grid gap-1.5" style={{ gridTemplateColumns: 'repeat(10, 1fr)' }}>
                   {last30.map((day) => (
                     <div
                       key={day.date}
                       title={`${day.date}: ${day.count} activities`}
-                      className={`aspect-square rounded-sm transition-colors
-                        ${day.count === 0 ? 'bg-surface-muted dark:bg-[#334155]' :
-                          day.count === 1 ? 'bg-primary-300' :
-                          day.count <= 3  ? 'bg-primary-400' :
-                          'bg-primary-600'}`}
+                      className="aspect-square rounded-md"
+                      style={{
+                        background: day.count === 0 ? (isDark ? '#334155' : '#F1F5F9') :
+                          day.count === 1 ? 'rgba(6,182,212,0.4)' :
+                          day.count <= 3  ? 'rgba(6,182,212,0.7)' : '#06B6D4',
+                      }}
                     />
                   ))}
                 </div>
-                <div className="flex items-center gap-2 mt-3 text-[10px] text-ink-400">
+                <div className="flex items-center gap-2 mt-4 text-[10px] text-[#94A3B8]">
                   <span>Less</span>
-                  <div className="w-3 h-3 rounded-sm bg-surface-muted dark:bg-[#334155]" />
-                  <div className="w-3 h-3 rounded-sm bg-primary-300" />
-                  <div className="w-3 h-3 rounded-sm bg-primary-400" />
-                  <div className="w-3 h-3 rounded-sm bg-primary-600" />
+                  <div className="w-3 h-3 rounded-sm" style={{ background: isDark ? '#334155' : '#F1F5F9' }} />
+                  <div className="w-3 h-3 rounded-sm" style={{ background: 'rgba(6,182,212,0.4)' }} />
+                  <div className="w-3 h-3 rounded-sm" style={{ background: 'rgba(6,182,212,0.7)' }} />
+                  <div className="w-3 h-3 rounded-sm" style={{ background: '#06B6D4' }} />
                   <span>More</span>
                 </div>
               </div>
-
             </div>
 
             {/* Recent quizzes */}
-            <div className="bg-white dark:bg-[#1E293B] border border-surface-border dark:border-[#334155] rounded-2xl p-5 shadow-soft">
-              <h2 className="text-sm font-semibold text-ink-900 dark:text-white mb-4">Recent quizzes</h2>
+            <div className="p-6 rounded-2xl border bg-white dark:bg-[#1E293B] border-[#E2E8F0] dark:border-[#334155] shadow-sm">
+              <h2 className="text-title text-[#0F172A] dark:text-[#F8FAFC] mb-5">Recent quizzes</h2>
               {quizHistory.length === 0 ? (
-                <p className="text-sm text-ink-500 text-center py-4">No quizzes taken yet</p>
+                <p className="text-sm text-center py-4 text-[#94A3B8]">No quizzes taken yet</p>
               ) : (
                 <div className="flex flex-col gap-1">
                   {quizHistory.slice(0, 8).map((attempt) => (
-                    <div key={attempt.id} className="flex items-center gap-3 px-2 py-2.5 rounded-lg hover:bg-surface-muted dark:hover:bg-[#1E293B] transition-colors">
-                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-semibold flex-shrink-0
-                        ${attempt.score_percentage >= 80 ? 'bg-emerald-50 dark:bg-emerald-400/20 text-emerald-600 dark:text-emerald-400' :
-                          attempt.score_percentage >= 60 ? 'bg-amber-50 dark:bg-amber-400/20 text-amber-600 dark:text-amber-400' :
-                          'bg-red-50 dark:bg-red-400/20 text-red-500 dark:text-red-400'}`}>
+                    <div key={attempt.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-[#0F172A] transition-colors">
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center text-xs font-semibold flex-shrink-0"
+                        style={{
+                          background: attempt.score_percentage >= 80 ? (isDark ? 'rgba(16,185,129,0.15)' : '#ECFDF5') : attempt.score_percentage >= 60 ? (isDark ? 'rgba(245,158,11,0.15)' : '#FFFBEB') : (isDark ? 'rgba(239,68,68,0.15)' : '#FEF2F2'),
+                          color: attempt.score_percentage >= 80 ? '#16A34A' : attempt.score_percentage >= 60 ? '#D97706' : '#DC2626',
+                        }}>
                         {Math.round(attempt.score_percentage)}%
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-ink-900 dark:text-white truncate">
-                          {attempt.topic || 'General Engineering'}
-                        </p>
-                        <p className="text-xs text-ink-400">
+                        <p className="text-sm font-medium text-[#0F172A] dark:text-[#F8FAFC] truncate">{attempt.topic || 'General Engineering'}</p>
+                        <p className="text-caption text-[#94A3B8]">
                           {attempt.quiz_type.toUpperCase()} · {attempt.difficulty} · {attempt.correct_answers}/{attempt.total_questions} correct
                         </p>
                       </div>
-                      <span className="text-xs text-ink-400 flex-shrink-0">
+                      <span className="text-caption flex-shrink-0 text-[#CBD5E1] dark:text-slate-500">
                         {new Date(attempt.created_at).toLocaleDateString()}
                       </span>
                     </div>
@@ -324,7 +297,6 @@ export default function Progress() {
                 </div>
               )}
             </div>
-
           </>
         )}
       </div>
