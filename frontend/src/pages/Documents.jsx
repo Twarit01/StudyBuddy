@@ -3,7 +3,7 @@ import { listSubjects, createSubject, deleteSubject, getSubjectOverview } from '
 import { listDocuments, uploadDocument, deleteDocument, assignSubject, regenerateSummary, generateFormulaSheet } from '../api/documents'
 import { exportFormulaSheetPDF, exportSummaryPDF } from '../utils/exportPDF'
 
-const SUBJECT_COLORS = ['#6366F1','#06B6D4','#10B981','#F59E0B','#EC4899','#EF4444','#8B5CF6','#14B8A6']
+const SUBJECT_COLORS = ['#6366F1','#22D3EE','#10B981','#F59E0B','#EC4899','#EF4444','#8B5CF6','#14B8A6']
 const SUBJECT_EMOJIS = ['📚','💻','⚡','🔬','📐','🧮','🌊','⚙️','📊','🧪']
 
 export default function Documents() {
@@ -127,12 +127,12 @@ export default function Documents() {
   const activeSubjectData = subjects.find(s => s.id === activeSubject)
 
   return (
-    <div className="flex h-full overflow-hidden bg-[#F8FAFC] dark:bg-[#0F172A] transition-colors duration-200">
+    <div className="flex h-full overflow-hidden bg-[#F8FAFC] dark:bg-[#0B0F1A] transition-colors duration-200">
 
       {/* Left sidebar — subjects */}
-      <div className="w-52 flex-shrink-0 flex flex-col overflow-hidden bg-white dark:bg-[#111827] border-r border-[#F1F5F9] dark:border-[#1E293B]">
+      <div className="w-52 flex-shrink-0 flex flex-col overflow-hidden bg-white dark:bg-[#0D1220] border-r border-[#F1F5F9] dark:border-[#1F2937]">
 
-        <div className="px-4 py-4 border-b border-[#F1F5F9] dark:border-[#1E293B]">
+        <div className="px-4 py-4 border-b border-[#F1F5F9] dark:border-[#1F2937]">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-label text-[#94A3B8]">Subjects</h2>
             <button onClick={() => setShowNewSubject(true)}
@@ -142,21 +142,21 @@ export default function Documents() {
           </div>
 
           {showNewSubject && (
-            <div className="mb-3 p-3 rounded-xl bg-[#F8FAFC] dark:bg-[#1E293B] border border-[#E2E8F0] dark:border-[#334155]">
+            <div className="mb-3 p-3 rounded-xl bg-[#F8FAFC] dark:bg-[#141B2D] border border-[#E2E8F0] dark:border-[#1F2937]">
               <input
                 type="text" value={newSubject.name}
                 onChange={e => setNewSubject({ ...newSubject, name: e.target.value })}
                 placeholder="Subject name"
                 className="w-full rounded-lg px-2.5 py-1.5 text-xs outline-none mb-2 border
-                  bg-white dark:bg-[#0F172A] border-[#E2E8F0] dark:border-[#334155]
-                  text-[#0F172A] dark:text-[#F8FAFC] focus:border-indigo-400"
+                  bg-white dark:bg-[#0B0F1A] border-[#E2E8F0] dark:border-[#1F2937]
+                  text-[#0F172A] dark:text-[#F1F5F9] focus:border-indigo-400"
                 onKeyDown={e => e.key === 'Enter' && handleCreateSubject()}
                 autoFocus
               />
               <div className="flex gap-1 flex-wrap mb-2">
                 {SUBJECT_EMOJIS.map(em => (
                   <button key={em} onClick={() => setNewSubject({ ...newSubject, emoji: em })}
-                    className={`text-sm p-0.5 rounded transition-colors ${newSubject.emoji === em ? 'bg-indigo-100 dark:bg-indigo-500/20' : 'hover:bg-slate-100 dark:hover:bg-[#334155]'}`}>
+                    className={`text-sm p-0.5 rounded transition-colors ${newSubject.emoji === em ? 'bg-indigo-100 dark:bg-indigo-500/20' : 'hover:bg-slate-100 dark:hover:bg-[#1F2937]'}`}>
                     {em}
                   </button>
                 ))}
@@ -165,12 +165,12 @@ export default function Documents() {
                 {SUBJECT_COLORS.map(color => (
                   <button key={color} onClick={() => setNewSubject({ ...newSubject, color })}
                     style={{ backgroundColor: color, width: 18, height: 18, borderRadius: '50%' }}
-                    className={`transition-transform ${newSubject.color === color ? 'scale-125 ring-2 ring-white dark:ring-[#1E293B]' : ''}`} />
+                    className={`transition-transform ${newSubject.color === color ? 'scale-125 ring-2 ring-white dark:ring-[#141B2D]' : ''}`} />
                 ))}
               </div>
               <div className="flex gap-2">
                 <button onClick={handleCreateSubject} className="flex-1 bg-indigo-600 text-white text-xs rounded-lg py-1.5 hover:bg-indigo-700">Create</button>
-                <button onClick={() => setShowNewSubject(false)} className="flex-1 bg-slate-200 dark:bg-[#334155] text-slate-700 dark:text-slate-300 text-xs rounded-lg py-1.5">Cancel</button>
+                <button onClick={() => setShowNewSubject(false)} className="flex-1 bg-slate-200 dark:bg-[#1F2937] text-slate-700 dark:text-slate-300 text-xs rounded-lg py-1.5">Cancel</button>
               </div>
             </div>
           )}
@@ -211,9 +211,9 @@ export default function Documents() {
       <div className="flex-1 flex flex-col overflow-hidden">
 
         {/* Top bar */}
-        <div className="px-6 py-4 flex items-center justify-between bg-white dark:bg-[#111827] border-b border-[#F1F5F9] dark:border-[#1E293B]">
+        <div className="px-6 py-4 flex items-center justify-between bg-white dark:bg-[#0D1220] border-b border-[#F1F5F9] dark:border-[#1F2937]">
           <div>
-            <h1 className="text-title text-[#0F172A] dark:text-[#F8FAFC]">
+            <h1 className="text-title text-[#0F172A] dark:text-[#F1F5F9]">
               {activeSubjectData ? `${activeSubjectData.emoji} ${activeSubjectData.name}` : 'All documents'}
             </h1>
             <p className="text-caption mt-0.5 text-[#94A3B8]">
@@ -287,14 +287,14 @@ export default function Documents() {
                 className="m-6 flex flex-col items-center justify-center rounded-2xl py-16 text-center transition-colors"
                 style={{
                   border: `2px dashed ${dragOver ? '#6366F1' : 'var(--drop-border)'}`,
-                  background: dragOver ? 'rgba(99,102,241,0.05)' : 'var(--drop-bg)',
+                  background: dragOver ? 'rgba(99,102,241,0.06)' : 'var(--drop-bg)',
                 }}
               >
-                <style>{`:root{--drop-border:#E2E8F0;--drop-bg:#F8FAFC}.dark{--drop-border:#334155;--drop-bg:#1E293B}`}</style>
+                <style>{`:root{--drop-border:#E2E8F0;--drop-bg:#F8FAFC}.dark{--drop-border:#1F2937;--drop-bg:#141B2D}`}</style>
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 bg-[#EEF2FF] dark:bg-indigo-500/15">
                   <i className="ti ti-cloud-upload" style={{ fontSize: 26, color: '#6366F1' }} aria-hidden="true"></i>
                 </div>
-                <p className="text-sm font-medium text-[#0F172A] dark:text-[#F8FAFC] mb-1">Drop files here</p>
+                <p className="text-sm font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">Drop files here</p>
                 <p className="text-caption mb-4 text-[#94A3B8]">PDF, DOCX, or TXT — up to 50MB</p>
                 <label className="btn-primary text-sm cursor-pointer">
                   <i className="ti ti-upload" style={{ fontSize: 15 }} aria-hidden="true"></i>
@@ -318,18 +318,18 @@ export default function Documents() {
                     <div
                       key={doc.id}
                       onClick={() => handleSelectDoc(doc)}
-                      className={`p-4 rounded-2xl border cursor-pointer group transition-all bg-white dark:bg-[#1E293B] shadow-sm
+                      className={`p-4 rounded-2xl border cursor-pointer group transition-all bg-white dark:bg-[#141B2D] shadow-sm
                         ${selectedDoc?.id === doc.id
                           ? 'border-indigo-300 dark:border-indigo-500/50 ring-1 ring-indigo-200 dark:ring-indigo-500/30'
-                          : 'border-[#E2E8F0] dark:border-[#334155]'}`}
+                          : 'border-[#E2E8F0] dark:border-[#1F2937]'}`}
                     >
                       <div className="flex items-start gap-3">
                         <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                          style={{ background: doc.file_type === 'pdf' ? 'rgba(239,68,68,0.1)' : doc.file_type === 'docx' ? 'rgba(59,130,246,0.1)' : 'rgba(16,185,129,0.1)' }}>
+                          style={{ background: doc.file_type === 'pdf' ? 'rgba(239,68,68,0.12)' : doc.file_type === 'docx' ? 'rgba(59,130,246,0.12)' : 'rgba(16,185,129,0.12)' }}>
                           <i className="ti ti-file-text" style={{ fontSize: 18, color: doc.file_type === 'pdf' ? '#EF4444' : doc.file_type === 'docx' ? '#3B82F6' : '#10B981' }} aria-hidden="true"></i>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-[#0F172A] dark:text-[#F8FAFC] truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{doc.original_name}</p>
+                          <p className="text-sm font-medium text-[#0F172A] dark:text-[#F1F5F9] truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{doc.original_name}</p>
                           <p className="text-caption mt-0.5 text-[#94A3B8]">
                             {(doc.file_size / 1024).toFixed(0)} KB · {doc.chunk_count} chunks
                           </p>
@@ -352,8 +352,8 @@ export default function Documents() {
                           onChange={e => { e.stopPropagation(); handleAssignSubject(doc.id, e.target.value) }}
                           onClick={e => e.stopPropagation()}
                           className="mt-3 w-full rounded-lg px-2 py-1 text-[11px] outline-none border
-                            bg-[#F8FAFC] dark:bg-[#0F172A] border-[#E2E8F0] dark:border-[#334155]
-                            text-[#0F172A] dark:text-[#F8FAFC]"
+                            bg-[#F8FAFC] dark:bg-[#0B0F1A] border-[#E2E8F0] dark:border-[#1F2937]
+                            text-[#0F172A] dark:text-[#F1F5F9]"
                         >
                           <option value="">No subject</option>
                           {subjects.map(s => <option key={s.id} value={s.id}>{s.emoji} {s.name}</option>)}
@@ -368,30 +368,30 @@ export default function Documents() {
 
           {/* Slide-over preview panel */}
           {selectedDoc && (
-            <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-[#111827] border-l border-[#F1F5F9] dark:border-[#1E293B]">
+            <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-[#0D1220] border-l border-[#F1F5F9] dark:border-[#1F2937]">
 
               {/* Panel header */}
-              <div className="px-6 py-4 flex items-center justify-between border-b border-[#F1F5F9] dark:border-[#1E293B]">
+              <div className="px-6 py-4 flex items-center justify-between border-b border-[#F1F5F9] dark:border-[#1F2937]">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: selectedDoc.file_type === 'pdf' ? 'rgba(239,68,68,0.1)' : 'rgba(59,130,246,0.1)' }}>
+                    style={{ background: selectedDoc.file_type === 'pdf' ? 'rgba(239,68,68,0.12)' : 'rgba(59,130,246,0.12)' }}>
                     <i className="ti ti-file-text" style={{ fontSize: 16, color: selectedDoc.file_type === 'pdf' ? '#EF4444' : '#3B82F6' }} aria-hidden="true"></i>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-[#0F172A] dark:text-[#F8FAFC] truncate">{selectedDoc.original_name}</p>
+                    <p className="text-sm font-medium text-[#0F172A] dark:text-[#F1F5F9] truncate">{selectedDoc.original_name}</p>
                     <p className="text-caption text-[#94A3B8]">
                       {(selectedDoc.file_size / 1024).toFixed(0)} KB · {selectedDoc.chunk_count} chunks · {selectedDoc.file_type.toUpperCase()}
                     </p>
                   </div>
                 </div>
                 <button onClick={() => setSelectedDoc(null)}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-[#1E293B] transition-colors flex-shrink-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
+                  className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-[#1F2937] transition-colors flex-shrink-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
                   <i className="ti ti-x" style={{ fontSize: 14 }} aria-hidden="true"></i>
                 </button>
               </div>
 
               {/* Tabs */}
-              <div className="flex px-6 py-0 border-b border-[#F1F5F9] dark:border-[#1E293B]">
+              <div className="flex px-6 py-0 border-b border-[#F1F5F9] dark:border-[#1F2937]">
                 {[
                   { id: 'summary', label: 'Summary', icon: 'ti-file-description' },
                   { id: 'formulas', label: 'Formulas', icon: 'ti-math-function' },
@@ -440,7 +440,7 @@ export default function Documents() {
                         <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 bg-[#EEF2FF] dark:bg-indigo-500/15">
                           <i className="ti ti-file-description" style={{ fontSize: 22, color: '#6366F1' }} aria-hidden="true"></i>
                         </div>
-                        <p className="text-sm font-medium text-[#0F172A] dark:text-[#F8FAFC] mb-1">No summary yet</p>
+                        <p className="text-sm font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">No summary yet</p>
                         <p className="text-caption mb-4 text-[#94A3B8]">Generate an AI summary of this document</p>
                         <button onClick={handleGetSummary} className="btn-primary text-sm">
                           <i className="ti ti-sparkles" style={{ fontSize: 15 }} aria-hidden="true"></i>
@@ -477,9 +477,9 @@ export default function Documents() {
                     ) : (
                       <div className="flex flex-col items-center py-16 text-center">
                         <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 bg-[#ECFEFF] dark:bg-cyan-500/15">
-                          <i className="ti ti-math-function" style={{ fontSize: 22, color: '#06B6D4' }} aria-hidden="true"></i>
+                          <i className="ti ti-math-function" style={{ fontSize: 22, color: '#22D3EE' }} aria-hidden="true"></i>
                         </div>
-                        <p className="text-sm font-medium text-[#0F172A] dark:text-[#F8FAFC] mb-1">No formula sheet yet</p>
+                        <p className="text-sm font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">No formula sheet yet</p>
                         <p className="text-caption mb-4 text-[#94A3B8]">Extract all formulas from this document</p>
                         <button onClick={handleGetFormulas} className="btn-primary text-sm">
                           <i className="ti ti-sparkles" style={{ fontSize: 15 }} aria-hidden="true"></i>

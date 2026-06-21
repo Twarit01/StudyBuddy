@@ -86,12 +86,12 @@ export default function Chat() {
   }
 
   return (
-    <div className="flex h-full overflow-hidden bg-[#F8FAFC] dark:bg-[#0F172A] transition-colors duration-200">
+    <div className="flex h-full overflow-hidden bg-[#F8FAFC] dark:bg-[#0B0F1A] transition-colors duration-200">
 
       {/* Sessions panel */}
-      <div className="w-56 flex-shrink-0 flex flex-col overflow-hidden bg-white dark:bg-[#111827] border-r border-[#F1F5F9] dark:border-[#1E293B]">
+      <div className="w-56 flex-shrink-0 flex flex-col overflow-hidden bg-white dark:bg-[#0D1220] border-r border-[#F1F5F9] dark:border-[#1F2937]">
 
-        <div className="p-3 border-b border-[#F1F5F9] dark:border-[#1E293B]">
+        <div className="p-3 border-b border-[#F1F5F9] dark:border-[#1F2937]">
           <button onClick={handleNewChat}
             className="btn-primary w-full justify-center text-sm py-2">
             <i className="ti ti-plus" style={{ fontSize: 15 }} aria-hidden="true"></i>
@@ -113,7 +113,7 @@ export default function Chat() {
               className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-xs transition-colors
                 ${activeSession === s.id
                   ? 'bg-indigo-50 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300'
-                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-[#1E293B] hover:text-slate-900 dark:hover:text-slate-200'}`}
+                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-[#141B2D] hover:text-slate-900 dark:hover:text-slate-200'}`}
             >
               <i className="ti ti-message-circle flex-shrink-0" style={{ fontSize: 13 }} aria-hidden="true"></i>
               <span className="flex-1 truncate font-medium">{s.title}</span>
@@ -140,7 +140,7 @@ export default function Chat() {
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 bg-[#EEF2FF] dark:bg-indigo-500/15">
                   <i className="ti ti-message-circle" style={{ fontSize: 26, color: '#6366F1' }} aria-hidden="true"></i>
                 </div>
-                <h2 className="text-lg font-semibold text-[#0F172A] dark:text-[#F8FAFC] mb-1" style={{ letterSpacing: '-0.3px' }}>
+                <h2 className="text-lg font-semibold text-[#0F172A] dark:text-[#F1F5F9] mb-1" style={{ letterSpacing: '-0.3px' }}>
                   Ask anything
                 </h2>
                 <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm leading-relaxed">
@@ -153,7 +153,7 @@ export default function Chat() {
                       key={q}
                       onClick={() => { setInput(q); inputRef.current?.focus() }}
                       className="text-left text-xs px-4 py-3 rounded-xl transition-colors font-medium
-                        bg-white dark:bg-[#1E293B] border border-[#E2E8F0] dark:border-[#334155]
+                        bg-white dark:bg-[#141B2D] border border-[#E2E8F0] dark:border-[#1F2937]
                         text-slate-600 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-500/50
                         hover:text-indigo-600 dark:hover:text-indigo-300 shadow-sm"
                     >
@@ -185,7 +185,7 @@ export default function Chat() {
                     className={`px-4 py-3 rounded-2xl text-sm leading-relaxed
                       ${msg.role === 'user'
                         ? 'text-white rounded-tr-sm'
-                        : 'rounded-tl-sm bg-white dark:bg-[#1E293B] border border-[#F1F5F9] dark:border-[#334155] text-slate-700 dark:text-slate-200 shadow-sm'}`}
+                        : 'rounded-tl-sm bg-white dark:bg-[#141B2D] border border-[#F1F5F9] dark:border-[#1F2937] text-slate-700 dark:text-slate-200 shadow-sm'}`}
                     style={msg.role === 'user' ? { background: 'linear-gradient(135deg, #6366F1, #4F46E5)' } : undefined}
                   >
                     {msg.role === 'assistant' ? (
@@ -225,7 +225,7 @@ export default function Chat() {
                   style={{ background: 'linear-gradient(135deg, #6366F1, #4F46E5)' }}>
                   <i className="ti ti-sparkles text-white" style={{ fontSize: 15 }} aria-hidden="true"></i>
                 </div>
-                <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-white dark:bg-[#1E293B] border border-[#F1F5F9] dark:border-[#334155] shadow-sm">
+                <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-white dark:bg-[#141B2D] border border-[#F1F5F9] dark:border-[#1F2937] shadow-sm">
                   <div className="flex gap-1.5 items-center h-4">
                     <div className="typing-dot" />
                     <div className="typing-dot" />
@@ -240,9 +240,9 @@ export default function Chat() {
         </div>
 
         {/* Input bar */}
-        <div className="px-6 py-4 bg-white dark:bg-[#111827] border-t border-[#F1F5F9] dark:border-[#1E293B]">
+        <div className="px-6 py-4 bg-white dark:bg-[#0D1220] border-t border-[#F1F5F9] dark:border-[#1F2937]">
           <div className="max-w-3xl mx-auto">
-            <div className="flex items-end gap-3 p-3 rounded-2xl transition-all bg-[#F8FAFC] dark:bg-[#0F172A] border border-[#E2E8F0] dark:border-[#334155]">
+            <div className="flex items-end gap-3 p-3 rounded-2xl transition-all bg-[#F8FAFC] dark:bg-[#0B0F1A] border border-[#E2E8F0] dark:border-[#1F2937]">
               <textarea
                 ref={el => { inputRef.current = el; textareaRef.current = el }}
                 value={input}
@@ -251,16 +251,16 @@ export default function Chat() {
                 onInput={handleInput}
                 placeholder="Ask a question about your study material..."
                 rows={1}
-                className="flex-1 bg-transparent text-sm text-[#0F172A] dark:text-[#F8FAFC] placeholder-slate-400 dark:placeholder-slate-500 outline-none resize-none"
+                className="flex-1 bg-transparent text-sm text-[#0F172A] dark:text-[#F1F5F9] placeholder-slate-400 dark:placeholder-slate-500 outline-none resize-none"
                 style={{ maxHeight: '140px', lineHeight: '1.6' }}
               />
               <button
                 onClick={handleSend}
                 disabled={loading || !input.trim()}
                 className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all disabled:opacity-40"
-                style={{ background: input.trim() ? 'linear-gradient(135deg, #6366F1, #4F46E5)' : 'var(--send-btn-bg)' }}
+                style={{ background: input.trim() ? 'linear-gradient(135deg, #6366F1, #4F46E5)' : (isDarkBtn => '')(false) || 'var(--send-btn-bg)' }}
               >
-                <style>{`:root{--send-btn-bg:#E2E8F0}.dark{--send-btn-bg:#334155}`}</style>
+                <style>{`:root{--send-btn-bg:#E2E8F0}.dark{--send-btn-bg:#1F2937}`}</style>
                 <i className="ti ti-arrow-up" style={{ fontSize: 16, color: input.trim() ? '#ffffff' : '#94A3B8' }} aria-hidden="true"></i>
               </button>
             </div>

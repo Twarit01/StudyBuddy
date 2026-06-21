@@ -98,8 +98,8 @@ export default function Progress() {
     if (active && payload?.length) {
       const d = payload[0].payload
       return (
-        <div className="px-3 py-2 rounded-lg text-xs bg-white dark:bg-[#1E293B] border border-[#E2E8F0] dark:border-[#334155]" style={{ boxShadow: '0 4px 12px rgba(15,23,42,0.1)' }}>
-          <p className="font-semibold text-[#0F172A] dark:text-[#F8FAFC]">{d.fullTopic}</p>
+        <div className="px-3 py-2 rounded-lg text-xs bg-white dark:bg-[#141B2D] border border-[#E2E8F0] dark:border-[#1F2937]" style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+          <p className="font-semibold text-[#0F172A] dark:text-[#F1F5F9]">{d.fullTopic}</p>
           <p className="text-[#64748B] dark:text-[#94A3B8]">{d.accuracy}% accuracy</p>
           <p className="text-[#94A3B8]">{d.total} questions</p>
         </div>
@@ -109,13 +109,13 @@ export default function Progress() {
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-[#F8FAFC] dark:bg-[#0F172A] transition-colors duration-200">
+    <div className="h-full overflow-y-auto bg-[#F8FAFC] dark:bg-[#0B0F1A] transition-colors duration-200">
       <div className="max-w-6xl mx-auto px-8 py-8">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
           <div>
-            <h1 className="text-display text-[#0F172A] dark:text-[#F8FAFC]">Progress</h1>
+            <h1 className="text-display text-[#0F172A] dark:text-[#F1F5F9]">Progress</h1>
             <p className="text-body mt-1 text-[#64748B] dark:text-[#94A3B8]">Track your learning over time</p>
           </div>
           <div className="flex items-center gap-3">
@@ -133,7 +133,7 @@ export default function Progress() {
 
         {/* Study plan */}
         {showPlan && studyPlan && (
-          <div className="p-6 mb-6 rounded-2xl border bg-white dark:bg-[#1E293B] border-[#C7D2FE] dark:border-indigo-500/30 shadow-sm">
+          <div className="p-6 mb-6 rounded-2xl border bg-white dark:bg-[#141B2D] border-[#C7D2FE] dark:border-indigo-500/30 shadow-sm">
             <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
               <h2 className="text-title flex items-center gap-2" style={{ color: '#4F46E5' }}>
                 <i className="ti ti-sparkles" style={{ fontSize: 17 }} aria-hidden="true"></i>
@@ -144,7 +144,7 @@ export default function Progress() {
                   <i className="ti ti-download" style={{ fontSize: 13 }} aria-hidden="true"></i>
                   Download
                 </button>
-                <button onClick={() => setShowPlan(false)} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-[#334155] text-slate-400">
+                <button onClick={() => setShowPlan(false)} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-[#1F2937] text-slate-400">
                   <i className="ti ti-x" style={{ fontSize: 14 }} aria-hidden="true"></i>
                 </button>
               </div>
@@ -179,26 +179,26 @@ export default function Progress() {
             {/* Stats */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
               {statCards.map((card) => (
-                <div key={card.label} className="p-5 rounded-2xl border bg-white dark:bg-[#1E293B] border-[#E2E8F0] dark:border-[#334155] shadow-sm">
+                <div key={card.label} className="p-5 rounded-2xl border bg-white dark:bg-[#141B2D] border-[#E2E8F0] dark:border-[#1F2937] shadow-sm">
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-4" style={{ background: isDark ? card.darkBg : card.bg }}>
                     <i className={`ti ${card.icon}`} style={{ fontSize: 18, color: card.color }} aria-hidden="true"></i>
                   </div>
-                  <div className="text-2xl font-semibold text-[#0F172A] dark:text-[#F8FAFC]" style={{ letterSpacing: '-0.5px' }}>{card.value}</div>
+                  <div className="text-2xl font-semibold text-[#0F172A] dark:text-[#F1F5F9]" style={{ letterSpacing: '-0.5px' }}>{card.value}</div>
                   <div className="text-caption mt-1 text-[#94A3B8]">{card.label}</div>
                 </div>
               ))}
             </div>
 
             {/* Topic chart */}
-            <div className="p-6 mb-6 rounded-2xl border bg-white dark:bg-[#1E293B] border-[#E2E8F0] dark:border-[#334155] shadow-sm">
+            <div className="p-6 mb-6 rounded-2xl border bg-white dark:bg-[#141B2D] border-[#E2E8F0] dark:border-[#1F2937] shadow-sm">
               <div className="flex items-center justify-between mb-5">
-                <h2 className="text-title text-[#0F172A] dark:text-[#F8FAFC]">Topic performance</h2>
+                <h2 className="text-title text-[#0F172A] dark:text-[#F1F5F9]">Topic performance</h2>
                 <span className="badge badge-cyan">By accuracy</span>
               </div>
               {topicStats.length === 0 ? (
                 <div className="flex flex-col items-center py-10 text-center">
                   <i className="ti ti-chart-bar" style={{ fontSize: 28, color: '#CBD5E1' }} aria-hidden="true"></i>
-                  <p className="text-sm font-medium text-[#0F172A] dark:text-[#F8FAFC] mt-3">No quiz data yet</p>
+                  <p className="text-sm font-medium text-[#0F172A] dark:text-[#F1F5F9] mt-3">No quiz data yet</p>
                   <p className="text-caption mt-1 text-[#94A3B8]">Take a quiz to see your topic breakdown</p>
                 </div>
               ) : (
@@ -220,8 +220,8 @@ export default function Progress() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
               {/* Flashcard breakdown */}
-              <div className="p-6 rounded-2xl border bg-white dark:bg-[#1E293B] border-[#E2E8F0] dark:border-[#334155] shadow-sm">
-                <h2 className="text-title text-[#0F172A] dark:text-[#F8FAFC] mb-5">Flashcard breakdown</h2>
+              <div className="p-6 rounded-2xl border bg-white dark:bg-[#141B2D] border-[#E2E8F0] dark:border-[#1F2937] shadow-sm">
+                <h2 className="text-title text-[#0F172A] dark:text-[#F1F5F9] mb-5">Flashcard breakdown</h2>
                 <div className="flex flex-col gap-4">
                   {[
                     { label: 'Total cards', value: fcStats.total     || 0, color: '#94A3B8' },
@@ -233,15 +233,15 @@ export default function Progress() {
                     <div key={item.label} className="flex items-center gap-3">
                       <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: item.color }} />
                       <span className="text-sm flex-1 text-[#64748B] dark:text-[#94A3B8]">{item.label}</span>
-                      <span className="text-sm font-semibold text-[#0F172A] dark:text-[#F8FAFC]">{item.value}</span>
+                      <span className="text-sm font-semibold text-[#0F172A] dark:text-[#F1F5F9]">{item.value}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* Activity heatmap */}
-              <div className="p-6 rounded-2xl border bg-white dark:bg-[#1E293B] border-[#E2E8F0] dark:border-[#334155] shadow-sm">
-                <h2 className="text-title text-[#0F172A] dark:text-[#F8FAFC] mb-5">Activity — last 30 days</h2>
+              <div className="p-6 rounded-2xl border bg-white dark:bg-[#141B2D] border-[#E2E8F0] dark:border-[#1F2937] shadow-sm">
+                <h2 className="text-title text-[#0F172A] dark:text-[#F1F5F9] mb-5">Activity — last 30 days</h2>
                 <div className="grid gap-1.5" style={{ gridTemplateColumns: 'repeat(10, 1fr)' }}>
                   {last30.map((day) => (
                     <div
@@ -249,33 +249,33 @@ export default function Progress() {
                       title={`${day.date}: ${day.count} activities`}
                       className="aspect-square rounded-md"
                       style={{
-                        background: day.count === 0 ? (isDark ? '#334155' : '#F1F5F9') :
-                          day.count === 1 ? 'rgba(6,182,212,0.4)' :
-                          day.count <= 3  ? 'rgba(6,182,212,0.7)' : '#06B6D4',
+                        background: day.count === 0 ? (isDark ? '#1F2937' : '#F1F5F9') :
+                          day.count === 1 ? 'rgba(34,211,238,0.4)' :
+                          day.count <= 3  ? 'rgba(34,211,238,0.7)' : '#22D3EE',
                       }}
                     />
                   ))}
                 </div>
                 <div className="flex items-center gap-2 mt-4 text-[10px] text-[#94A3B8]">
                   <span>Less</span>
-                  <div className="w-3 h-3 rounded-sm" style={{ background: isDark ? '#334155' : '#F1F5F9' }} />
-                  <div className="w-3 h-3 rounded-sm" style={{ background: 'rgba(6,182,212,0.4)' }} />
-                  <div className="w-3 h-3 rounded-sm" style={{ background: 'rgba(6,182,212,0.7)' }} />
-                  <div className="w-3 h-3 rounded-sm" style={{ background: '#06B6D4' }} />
+                  <div className="w-3 h-3 rounded-sm" style={{ background: isDark ? '#1F2937' : '#F1F5F9' }} />
+                  <div className="w-3 h-3 rounded-sm" style={{ background: 'rgba(34,211,238,0.4)' }} />
+                  <div className="w-3 h-3 rounded-sm" style={{ background: 'rgba(34,211,238,0.7)' }} />
+                  <div className="w-3 h-3 rounded-sm" style={{ background: '#22D3EE' }} />
                   <span>More</span>
                 </div>
               </div>
             </div>
 
             {/* Recent quizzes */}
-            <div className="p-6 rounded-2xl border bg-white dark:bg-[#1E293B] border-[#E2E8F0] dark:border-[#334155] shadow-sm">
-              <h2 className="text-title text-[#0F172A] dark:text-[#F8FAFC] mb-5">Recent quizzes</h2>
+            <div className="p-6 rounded-2xl border bg-white dark:bg-[#141B2D] border-[#E2E8F0] dark:border-[#1F2937] shadow-sm">
+              <h2 className="text-title text-[#0F172A] dark:text-[#F1F5F9] mb-5">Recent quizzes</h2>
               {quizHistory.length === 0 ? (
                 <p className="text-sm text-center py-4 text-[#94A3B8]">No quizzes taken yet</p>
               ) : (
                 <div className="flex flex-col gap-1">
                   {quizHistory.slice(0, 8).map((attempt) => (
-                    <div key={attempt.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-[#0F172A] transition-colors">
+                    <div key={attempt.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-[#0B0F1A] transition-colors">
                       <div className="w-9 h-9 rounded-lg flex items-center justify-center text-xs font-semibold flex-shrink-0"
                         style={{
                           background: attempt.score_percentage >= 80 ? (isDark ? 'rgba(16,185,129,0.15)' : '#ECFDF5') : attempt.score_percentage >= 60 ? (isDark ? 'rgba(245,158,11,0.15)' : '#FFFBEB') : (isDark ? 'rgba(239,68,68,0.15)' : '#FEF2F2'),
@@ -284,7 +284,7 @@ export default function Progress() {
                         {Math.round(attempt.score_percentage)}%
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-[#0F172A] dark:text-[#F8FAFC] truncate">{attempt.topic || 'General Engineering'}</p>
+                        <p className="text-sm font-medium text-[#0F172A] dark:text-[#F1F5F9] truncate">{attempt.topic || 'General Engineering'}</p>
                         <p className="text-caption text-[#94A3B8]">
                           {attempt.quiz_type.toUpperCase()} · {attempt.difficulty} · {attempt.correct_answers}/{attempt.total_questions} correct
                         </p>

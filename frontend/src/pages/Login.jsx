@@ -20,35 +20,43 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: '#F8FAFC' }}>
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: '#0B0F1A' }}>
       <div className="w-full max-w-sm">
 
         <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4"
-            style={{ background: 'linear-gradient(135deg, #6366F1, #4F46E5)', boxShadow: '0 4px 16px rgba(79,70,229,0.25)' }}>
-            <i className="ti ti-book-2 text-white" style={{ fontSize: 22 }} aria-hidden="true"></i>
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 overflow-hidden"
+            style={{ boxShadow: '0 4px 20px rgba(99,102,241,0.35)' }}>
+            <img src="/studybuddy-logo.png" alt="StudyBuddy" className="w-full h-full object-cover" />
           </div>
-          <h1 className="text-heading text-[#0F172A]">Welcome back</h1>
-          <p className="text-body mt-1" style={{ color: '#64748B' }}>Sign in to StudyBuddy</p>
+          <h1 className="text-heading" style={{ color: '#F1F5F9' }}>Welcome back</h1>
+          <p className="text-body mt-1" style={{ color: '#94A3B8' }}>Sign in to StudyBuddy</p>
         </div>
 
-        <div className="card-elevated p-7">
+        <div className="p-7 rounded-2xl border" style={{ background: '#141B2D', borderColor: '#1F2937', boxShadow: '0 4px 24px rgba(0,0,0,0.4)' }}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {error && (
-              <div className="px-4 py-3 rounded-xl text-sm flex items-center gap-2" style={{ background: '#FEF2F2', color: '#DC2626' }}>
+              <div className="px-4 py-3 rounded-xl text-sm flex items-center gap-2" style={{ background: 'rgba(239,68,68,0.12)', color: '#FCA5A5' }}>
                 <i className="ti ti-alert-circle flex-shrink-0" style={{ fontSize: 16 }} aria-hidden="true"></i>
                 {error}
               </div>
             )}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium" style={{ color: '#64748B' }}>Email</label>
-              <input type="email" name="email" value={form.email} onChange={handleChange}
-                placeholder="you@example.com" required className="input-field text-sm" />
+              <label className="text-xs font-medium" style={{ color: '#94A3B8' }}>Email</label>
+              <input
+                type="email" name="email" value={form.email} onChange={handleChange}
+                placeholder="you@example.com" required
+                className="text-sm rounded-lg px-3.5 py-2.5 outline-none border transition-colors"
+                style={{ background: '#0B0F1A', borderColor: '#1F2937', color: '#F1F5F9' }}
+              />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium" style={{ color: '#64748B' }}>Password</label>
-              <input type="password" name="password" value={form.password} onChange={handleChange}
-                placeholder="••••••••" required className="input-field text-sm" />
+              <label className="text-xs font-medium" style={{ color: '#94A3B8' }}>Password</label>
+              <input
+                type="password" name="password" value={form.password} onChange={handleChange}
+                placeholder="••••••••" required
+                className="text-sm rounded-lg px-3.5 py-2.5 outline-none border transition-colors"
+                style={{ background: '#0B0F1A', borderColor: '#1F2937', color: '#F1F5F9' }}
+              />
             </div>
             <button type="submit" disabled={loading} className="btn-primary justify-center py-2.5 text-sm mt-2">
               {loading
@@ -58,9 +66,9 @@ export default function Login() {
           </form>
         </div>
 
-        <p className="text-center text-sm mt-6" style={{ color: '#64748B' }}>
+        <p className="text-center text-sm mt-6" style={{ color: '#94A3B8' }}>
           Don't have an account?{' '}
-          <Link to="/register" className="font-medium" style={{ color: '#4F46E5' }}>Sign up</Link>
+          <Link to="/register" className="font-medium" style={{ color: '#A5B4FC' }}>Sign up</Link>
         </p>
       </div>
     </div>

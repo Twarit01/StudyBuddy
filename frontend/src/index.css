@@ -17,7 +17,7 @@ body {
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 8px; }
-.dark ::-webkit-scrollbar-thumb { background: #334155; }
+.dark ::-webkit-scrollbar-thumb { background: #1F2937; }
 ::-webkit-scrollbar-thumb:hover { background: #6366f1; }
 
 /* ── Typography ── */
@@ -37,12 +37,12 @@ body {
   transition: box-shadow 0.15s, border-color 0.15s;
 }
 .dark .card {
-  background: #1E293B;
-  border-color: #334155;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.03);
+  background: #141B2D;
+  border-color: #1F2937;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.02);
 }
 .card:hover { box-shadow: 0 4px 12px rgba(15,23,42,0.08), 0 1px 4px rgba(15,23,42,0.04); }
-.dark .card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05); }
+.dark .card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04); }
 
 .card-elevated {
   background: #ffffff;
@@ -51,9 +51,9 @@ body {
   box-shadow: 0 2px 4px rgba(15,23,42,0.04), 0 4px 16px rgba(15,23,42,0.06);
 }
 .dark .card-elevated {
-  background: #1E293B;
-  border-color: #334155;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04);
+  background: #141B2D;
+  border-color: #1F2937;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03);
 }
 
 /* ── Nav items ── */
@@ -65,7 +65,7 @@ body {
   cursor: pointer; text-decoration: none;
 }
 .nav-item:hover { background: #F8FAFC; color: #0F172A; }
-.dark .nav-item:hover { background: #1E293B; color: #F8FAFC; }
+.dark .nav-item:hover { background: #141B2D; color: #F1F5F9; }
 .nav-item.active { background: #EEF2FF; color: #4F46E5; }
 .dark .nav-item.active { background: rgba(99,102,241,0.15); color: #A5B4FC; }
 
@@ -92,8 +92,8 @@ body {
   box-shadow: 0 1px 2px rgba(15,23,42,0.04);
 }
 .btn-secondary:hover { background: #F8FAFC; border-color: #CBD5E1; }
-.dark .btn-secondary { background: #1E293B; color: #E2E8F0; border-color: #334155; }
-.dark .btn-secondary:hover { background: #273549; border-color: #475569; }
+.dark .btn-secondary { background: #141B2D; color: #E2E8F0; border-color: #1F2937; }
+.dark .btn-secondary:hover { background: #1A2336; border-color: #2D3B52; }
 
 /* ── Input fields ── */
 .input-field {
@@ -108,7 +108,7 @@ body {
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .input-field:focus { border-color: #6366F1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
-.dark .input-field { background: #0F172A; border-color: #334155; color: #F8FAFC; }
+.dark .input-field { background: #0B0F1A; border-color: #1F2937; color: #F1F5F9; }
 .dark .input-field:focus { border-color: #6366F1; box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
 .input-field::placeholder { color: #94A3B8; }
 
@@ -122,12 +122,12 @@ body {
   transition: all 0.15s;
 }
 .dark .stat-card {
-  background: #1E293B;
-  border-color: #334155;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  background: #141B2D;
+  border-color: #1F2937;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
 .stat-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(15,23,42,0.08); }
-.dark .stat-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+.dark .stat-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
 
 /* ── Section dividers ── */
 .section-divider {
@@ -136,7 +136,7 @@ body {
   margin: 24px 0;
 }
 .dark .section-divider {
-  background: linear-gradient(90deg, transparent, #334155 20%, #334155 80%, transparent);
+  background: linear-gradient(90deg, transparent, #1F2937 20%, #1F2937 80%, transparent);
 }
 
 /* ── Badges ── */
@@ -146,15 +146,15 @@ body {
   font-size: 11px; font-weight: 500;
 }
 .badge-indigo { background: #EEF2FF; color: #4F46E5; }
-.dark .badge-indigo { background: rgba(99,102,241,0.15); color: #A5B4FC; }
+.dark .badge-indigo { background: rgba(99,102,241,0.18); color: #A5B4FC; }
 .badge-cyan { background: #ECFEFF; color: #0891B2; }
-.dark .badge-cyan { background: rgba(6,182,212,0.15); color: #67E8F9; }
+.dark .badge-cyan { background: rgba(34,211,238,0.18); color: #67E8F9; }
 .badge-green { background: #F0FDF4; color: #16A34A; }
-.dark .badge-green { background: rgba(34,197,94,0.15); color: #86EFAC; }
+.dark .badge-green { background: rgba(34,197,94,0.18); color: #86EFAC; }
 .badge-amber { background: #FFFBEB; color: #D97706; }
-.dark .badge-amber { background: rgba(245,158,11,0.15); color: #FCD34D; }
+.dark .badge-amber { background: rgba(245,158,11,0.18); color: #FCD34D; }
 .badge-red { background: #FEF2F2; color: #DC2626; }
-.dark .badge-red { background: rgba(239,68,68,0.15); color: #FCA5A5; }
+.dark .badge-red { background: rgba(239,68,68,0.18); color: #FCA5A5; }
 
 /* ── Markdown ── */
 .markdown h1, .markdown h2, .markdown h3 { font-weight: 600; margin: 16px 0 8px; letter-spacing: -0.2px; }
@@ -167,9 +167,9 @@ body {
   padding: 2px 6px; border-radius: 5px;
   font-family: 'JetBrains Mono', monospace; font-size: 0.85em;
 }
-.dark .markdown code { background: rgba(99,102,241,0.15); color: #A5B4FC; }
+.dark .markdown code { background: rgba(99,102,241,0.18); color: #A5B4FC; }
 .markdown pre { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 14px; margin: 10px 0; overflow-x: auto; }
-.dark .markdown pre { background: #0F172A; border-color: #334155; }
+.dark .markdown pre { background: #0B0F1A; border-color: #1F2937; }
 .markdown pre code { background: none; padding: 0; }
 .markdown strong { font-weight: 600; }
 .markdown blockquote { border-left: 3px solid #6366F1; padding-left: 14px; color: #64748B; margin: 10px 0; font-style: italic; }
@@ -189,7 +189,7 @@ body {
 
 /* ── Progress bar ── */
 .progress-bar { height: 6px; background: #E2E8F0; border-radius: 99px; overflow: hidden; }
-.dark .progress-bar { background: #334155; }
+.dark .progress-bar { background: #1F2937; }
 .progress-fill { height: 100%; border-radius: 99px; transition: width 0.4s cubic-bezier(0.4,0,0.2,1); }
 .progress-fill-indigo { background: linear-gradient(90deg, #6366F1, #818CF8); }
 .progress-fill-cyan { background: linear-gradient(90deg, #06B6D4, #22D3EE); }
