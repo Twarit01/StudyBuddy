@@ -239,9 +239,21 @@ cd frontend
 npm install
 ```
 
-Add the logo to `frontend/public/studybuddy-logo.png`.
+Add the app logo to `frontend/public/studybuddy-logo.png`.
 
 ### 4. Run the application
+
+**Option A — One command (recommended)**
+
+From the project root:
+```bash
+npm install
+npm run dev
+```
+
+This starts both backend and frontend together with color-coded logs.
+
+**Option B — Run separately**
 
 **Terminal 1 — Backend:**
 ```bash
