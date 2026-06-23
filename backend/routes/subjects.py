@@ -89,7 +89,8 @@ def list_subjects(
     result = []
     for s in subjects:
         doc_count = db.query(Document).filter(
-            Document.subject_id == s.id
+            Document.subject_id == s.id,
+            Document.owner_id == current_user.id
         ).count()
         result.append({**s.__dict__, "doc_count": doc_count})
 
@@ -112,7 +113,8 @@ def get_subject_documents(
         raise HTTPException(status_code=404, detail="Subject not found")
 
     documents = db.query(Document).filter(
-        Document.subject_id == subject_id
+        Document.subject_id == subject_id,
+        Document.owner_id == current_user.id
     ).all()
 
     return {
@@ -137,7 +139,8 @@ def get_subject_overview(
         raise HTTPException(status_code=404, detail="Subject not found")
 
     documents = db.query(Document).filter(
-        Document.subject_id == subject_id
+        Document.subject_id == subject_id,
+        Document.owner_id == current_user.id
     ).all()
 
     if not documents:
@@ -174,7 +177,8 @@ def update_subject(
     db.refresh(subject)
 
     doc_count = db.query(Document).filter(
-        Document.subject_id == subject_id
+        Document.subject_id == subject_id,
+        Document.owner_id == current_user.id
     ).count()
 
     return {**subject.__dict__, "doc_count": doc_count}
@@ -197,7 +201,8 @@ def delete_subject(
 
     # Move documents to uncategorized instead of deleting them
     db.query(Document).filter(
-        Document.subject_id == subject_id
+        Document.subject_id == subject_id,
+        Document.owner_id == current_user.id
     ).update({"subject_id": None})
 
     db.delete(subject)

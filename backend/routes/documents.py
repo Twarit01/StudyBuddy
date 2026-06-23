@@ -1,13 +1,16 @@
+import os
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 
+from core.config import settings
 from core.database import get_db
 from core.dependencies import get_current_user
 from models.user import User
 from models.document import Document
+from models.subject import Subject
 from services.document_processor import validate_file, save_uploaded_file, process_document
 from services.rag import store_document_chunks, delete_document_chunks
 from services.document_ai import generate_document_summary, generate_formula_sheet
@@ -38,6 +41,36 @@ class AssignSubjectRequest(BaseModel):
     subject_id: Optional[int] = None
 
 
+def _ensure_subject_owner(
+    subject_id: Optional[int],
+    db: Session,
+    current_user: User
+) -> None:
+    if subject_id is None:
+        return
+
+    subject = db.query(Subject).filter(
+        Subject.id == subject_id,
+        Subject.owner_id == current_user.id
+    ).first()
+
+    if not subject:
+        raise HTTPException(status_code=404, detail="Subject not found")
+
+
+def _delete_uploaded_file(filename: str) -> None:
+    if not filename:
+        return
+    try:
+        os.remove(os.path.join(settings.UPLOAD_DIR, filename))
+    except FileNotFoundError:
+        pass
+
+
+def _ai_failure(detail: str) -> HTTPException:
+    return HTTPException(status_code=503, detail=detail)
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @router.post("/upload", response_model=DocumentResponse)
@@ -58,6 +91,8 @@ async def upload_document(
     if not is_valid:
         raise HTTPException(status_code=400, detail=error_msg)
 
+    _ensure_subject_owner(subject_id, db, current_user)
+
     file_type = file.filename.rsplit(".", 1)[-1].lower()
     saved_filename, file_path = save_uploaded_file(file_bytes, file.filename)
 
@@ -70,11 +105,11 @@ async def upload_document(
         file_size=len(file_bytes),
         is_processed=False
     )
-    db.add(document)
-    db.commit()
-    db.refresh(document)
-
     try:
+        db.add(document)
+        db.commit()
+        db.refresh(document)
+
         # Process document
         chunks = process_document(file_path, file_type)
 
@@ -98,9 +133,22 @@ async def upload_document(
         db.commit()
         db.refresh(document)
 
-    except Exception as e:
-        db.commit()
-        raise HTTPException(status_code=500, detail=f"Failed to process document: {str(e)}")
+    except HTTPException:
+        db.rollback()
+        _delete_uploaded_file(saved_filename)
+        if document.id:
+            delete_document_chunks(user_id=current_user.id, document_id=document.id)
+            db.delete(document)
+            db.commit()
+        raise
+    except Exception:
+        db.rollback()
+        _delete_uploaded_file(saved_filename)
+        if document.id:
+            delete_document_chunks(user_id=current_user.id, document_id=document.id)
+            db.delete(document)
+            db.commit()
+        raise _ai_failure("Failed to process document. Please try again later.")
 
     return document
 
@@ -120,6 +168,7 @@ def list_documents(
     if subject_id == 0:
         query = query.filter(Document.subject_id == None)
     elif subject_id:
+        _ensure_subject_owner(subject_id, db, current_user)
         query = query.filter(Document.subject_id == subject_id)
 
     return query.order_by(Document.created_at.desc()).all()
@@ -287,6 +336,8 @@ def assign_subject(
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
 
+    _ensure_subject_owner(request.subject_id, db, current_user)
+
     document.subject_id = request.subject_id
     db.commit()
 
@@ -309,6 +360,7 @@ def delete_document(
         raise HTTPException(status_code=404, detail="Document not found")
 
     delete_document_chunks(user_id=current_user.id, document_id=document_id)
+    _delete_uploaded_file(document.filename)
     db.delete(document)
     db.commit()
 
