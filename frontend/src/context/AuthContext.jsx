@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect, useContext } from 'react'
-import { login as loginApi, register as registerApi } from '../api/auth'
+import { getMe, login as loginApi, register as registerApi } from '../api/auth'
 
 const AuthContext = createContext(null)
 
@@ -8,17 +8,41 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // On app load — restore session from localStorage
+  // On app load, validate any stored session before trusting it.
   useEffect(() => {
-    const savedToken = localStorage.getItem('token')
-    const savedUser = localStorage.getItem('user')
+    let cancelled = false
 
-    if (savedToken && savedUser) {
-      setToken(savedToken)
-      setUser(JSON.parse(savedUser))
+    const restoreSession = async () => {
+      const savedToken = localStorage.getItem('token')
+      if (!savedToken) {
+        if (!cancelled) setLoading(false)
+        return
+      }
+
+      try {
+        const currentUser = await getMe()
+        if (cancelled) return
+
+        setToken(savedToken)
+        setUser(currentUser)
+        localStorage.setItem('user', JSON.stringify(currentUser))
+      } catch {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+
+        if (cancelled) return
+        setToken(null)
+        setUser(null)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
     }
 
-    setLoading(false)
+    restoreSession()
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const login = async (email, password) => {
