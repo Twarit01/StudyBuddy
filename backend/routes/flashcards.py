@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -16,6 +17,7 @@ from services.flashcard_generator import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
@@ -71,10 +73,11 @@ def generate_cards(
             count=request.count,
             document_id=request.document_id
         )
-    except Exception as e:
+    except Exception as exc:
+        logger.warning("Flashcard generation failed: %s", type(exc).__name__)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate flashcards: {str(e)}"
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI service is temporarily unavailable. Please try again later."
         )
 
     # Save all generated cards to database

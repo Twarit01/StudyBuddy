@@ -1,4 +1,5 @@
 import json
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -14,6 +15,7 @@ from services.rag import retrieve_relevant_chunks, build_rag_prompt
 from services.gemini import generate_with_history, assess_confidence
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
@@ -128,7 +130,17 @@ def ask_question(
     history.append({"role": "user", "parts": [rag_prompt]})
 
     # Step 5: Generate answer
-    answer = generate_with_history(history)
+    try:
+        answer = generate_with_history(history)
+    except Exception as exc:
+        logger.warning("Chat generation failed: %s", type(exc).__name__)
+        if not request.session_id:
+            db.delete(session)
+            db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI service is temporarily unavailable. Please try again later."
+        )
 
     # Step 6: Assess confidence
     confidence = "medium"

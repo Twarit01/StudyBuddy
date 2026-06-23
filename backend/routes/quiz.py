@@ -1,4 +1,5 @@
 import json
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -12,6 +13,7 @@ from models.quiz_attempt import QuizAttempt
 from services.quiz_generator import generate_quiz, evaluate_short_answer
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
 
@@ -98,10 +100,11 @@ def generate_quiz_questions(
             count=request.count,
             document_id=request.document_id
         )
-    except Exception as e:
+    except Exception as exc:
+        logger.warning("Quiz generation failed: %s", type(exc).__name__)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate quiz: {str(e)}"
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI service is temporarily unavailable. Please try again later."
         )
 
     return {
@@ -129,10 +132,11 @@ def evaluate_answer(
             expected_answer=request.expected_answer,
             key_points=request.key_points
         )
-    except Exception as e:
+    except Exception as exc:
+        logger.warning("Answer evaluation failed: %s", type(exc).__name__)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to evaluate answer: {str(e)}"
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI service is temporarily unavailable. Please try again later."
         )
 
     return result
@@ -148,9 +152,20 @@ def submit_quiz(
     Save a completed quiz attempt to the database.
     Called after student finishes a quiz — stores score for progress tracking.
     """
+    if request.total_questions < 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="total_questions must be at least 1"
+        )
+
+    if request.correct_answers < 0 or request.correct_answers > request.total_questions:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="correct_answers must be between 0 and total_questions"
+        )
+
     score_percentage = (
         round((request.correct_answers / request.total_questions) * 100, 1)
-        if request.total_questions > 0 else 0.0
     )
 
     attempt = QuizAttempt(
