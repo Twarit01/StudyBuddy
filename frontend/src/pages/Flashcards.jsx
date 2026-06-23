@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { generateFlashcards, getAllFlashcards, getDueFlashcards, reviewFlashcard, deleteAllFlashcards } from '../api/flashcards'
+import { listDocuments } from '../api/documents'
 
 const QUALITY_BUTTONS = [
   { quality: 0, label: 'Forgot',  sub: 'Reset',         bg: '#FEF2F2', darkBg: 'rgba(239,68,68,0.12)',  border: '#FECACA', darkBorder: 'rgba(239,68,68,0.3)',  color: '#DC2626' },
@@ -9,14 +11,18 @@ const QUALITY_BUTTONS = [
 ]
 
 export default function Flashcards() {
+  const location = useLocation()
   const [cards, setCards]               = useState([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [flipped, setFlipped]           = useState(false)
   const [mode, setMode]                 = useState('all')
   const [loading, setLoading]           = useState(false)
   const [generating, setGenerating]     = useState(false)
+  const [reviewing, setReviewing]       = useState(false)
   const [error, setError]               = useState(null)
-  const [config, setConfig]             = useState({ topic: '', count: 10 })
+  const [documents, setDocuments]       = useState([])
+  const [documentsError, setDocumentsError] = useState(null)
+  const [config, setConfig]             = useState({ topic: '', count: 10, documentId: '' })
   const [sessionStats, setSessionStats] = useState({ correct: 0, wrong: 0 })
   const [finished, setFinished]         = useState(false)
   const [isDark, setIsDark]             = useState(false)
@@ -31,6 +37,20 @@ export default function Flashcards() {
 
   useEffect(() => { fetchCards() }, [mode])
 
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      try { setDocuments(await listDocuments()) }
+      catch (err) { console.error(err); setDocumentsError('Could not load documents') }
+    }
+    fetchDocuments()
+  }, [])
+
+  useEffect(() => {
+    if (location.state?.documentId) {
+      setConfig(prev => ({ ...prev, documentId: String(location.state.documentId) }))
+    }
+  }, [location.state])
+
   const fetchCards = async () => {
     setLoading(true); setError(null)
     setCurrentIndex(0); setFlipped(false)
@@ -44,13 +64,15 @@ export default function Flashcards() {
 
   const handleGenerate = async () => {
     setGenerating(true); setError(null)
-    try { await generateFlashcards(config.topic || null, config.count); await fetchCards() }
+    try { await generateFlashcards(config.topic || null, config.count, config.documentId || null); await fetchCards() }
     catch (err) { setError(err.response?.data?.detail || 'Failed to generate') }
     finally { setGenerating(false) }
   }
 
   const handleReview = async (quality) => {
     const card = cards[currentIndex]
+    if (!card || reviewing) return
+    setReviewing(true); setError(null)
     try {
       await reviewFlashcard(card.id, quality)
       setSessionStats(prev => ({
@@ -59,7 +81,8 @@ export default function Flashcards() {
       }))
       if (currentIndex + 1 >= cards.length) setFinished(true)
       else { setCurrentIndex(prev => prev + 1); setFlipped(false) }
-    } catch (err) { console.error(err) }
+    } catch (err) { console.error(err); setError('Could not save your review. Please try again.') }
+    finally { setReviewing(false) }
   }
 
   const handleDeleteAll = async () => {
@@ -73,10 +96,10 @@ export default function Flashcards() {
 
   return (
     <div className="h-full overflow-y-auto bg-[#F8FAFC] dark:bg-[#0B0F1A] transition-colors duration-200">
-      <div className="max-w-2xl mx-auto px-8 py-8">
+      <div className="max-w-2xl mx-auto px-4 sm:px-8 py-6 sm:py-8">
 
         {/* Header */}
-        <div className="flex items-start justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-8">
           <div>
             <h1 className="text-display text-[#0F172A] dark:text-[#F1F5F9]">Flashcards</h1>
             <p className="text-body mt-1 text-[#64748B] dark:text-[#94A3B8]">Spaced repetition powered by the SM-2 algorithm</p>
@@ -92,7 +115,7 @@ export default function Flashcards() {
         {/* Generate panel */}
         <div className="p-5 mb-6 rounded-2xl border bg-white dark:bg-[#141B2D] border-[#E2E8F0] dark:border-[#1F2937] shadow-sm">
           <h2 className="text-title text-[#0F172A] dark:text-[#F1F5F9] mb-4">Generate flashcards</h2>
-          <div className="flex gap-3 flex-wrap">
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-3">
             <input
               type="text" value={config.topic}
               onChange={e => setConfig({ ...config, topic: e.target.value })}
@@ -102,6 +125,16 @@ export default function Flashcards() {
                 text-[#0F172A] dark:text-[#F1F5F9] placeholder-slate-400 focus:border-indigo-400"
             />
             <select
+              value={config.documentId}
+              onChange={e => setConfig({ ...config, documentId: e.target.value })}
+              className="rounded-lg px-3 py-2 text-sm outline-none border min-w-0 sm:w-44
+                bg-[#F8FAFC] dark:bg-[#0B0F1A] border-[#E2E8F0] dark:border-[#1F2937]
+                text-[#0F172A] dark:text-[#F1F5F9]"
+            >
+              <option value="">All documents</option>
+              {documents.map(doc => <option key={doc.id} value={doc.id}>{doc.original_name}</option>)}
+            </select>
+            <select
               value={config.count}
               onChange={e => setConfig({ ...config, count: Number(e.target.value) })}
               className="rounded-lg px-3 py-2 text-sm outline-none border w-auto
@@ -110,7 +143,7 @@ export default function Flashcards() {
             >
               {[5,10,15,20].map(n => <option key={n} value={n}>{n} cards</option>)}
             </select>
-            <button onClick={handleGenerate} disabled={generating} className="btn-primary text-sm">
+            <button onClick={handleGenerate} disabled={generating} className="btn-primary text-sm justify-center">
               {generating
                 ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Generating...</>
                 : <><i className="ti ti-sparkles" style={{ fontSize: 15 }} aria-hidden="true"></i>Generate</>}
@@ -118,6 +151,9 @@ export default function Flashcards() {
           </div>
           {error && (
             <div className="mt-3 px-3 py-2 rounded-lg text-xs bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300">{error}</div>
+          )}
+          {documentsError && (
+            <div className="mt-3 px-3 py-2 rounded-lg text-xs bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300">{documentsError}</div>
           )}
         </div>
 
@@ -175,7 +211,7 @@ export default function Flashcards() {
                 <div className="text-caption text-[#94A3B8]">to review</div>
               </div>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button onClick={fetchCards} className="btn-primary text-sm">Study again</button>
               <button onClick={() => setMode('due')} className="btn-secondary text-sm">Review due</button>
             </div>
@@ -195,7 +231,7 @@ export default function Flashcards() {
             </div>
 
             {/* Session stats */}
-            <div className="flex gap-3 mb-5">
+            <div className="flex flex-wrap gap-3 mb-5">
               <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: '#10B981' }}>
                 <i className="ti ti-check" style={{ fontSize: 14 }} aria-hidden="true"></i>
                 {sessionStats.correct} correct
@@ -212,7 +248,7 @@ export default function Flashcards() {
             {/* Card */}
             <div
               className="flip-card mb-5"
-              style={{ height: '260px' }}
+              style={{ minHeight: '260px', height: 'clamp(260px, 46vh, 360px)' }}
               onClick={() => setFlipped(prev => !prev)}
             >
               <div className={`flip-card-inner ${flipped ? 'flipped' : ''}`}>
@@ -243,11 +279,12 @@ export default function Flashcards() {
             {flipped ? (
               <div>
                 <p className="text-caption text-center mb-3 text-[#94A3B8]">How well did you know this?</p>
-                <div className="grid grid-cols-4 gap-2 mb-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
                   {QUALITY_BUTTONS.map(btn => (
                     <button
                       key={btn.quality}
                       onClick={() => handleReview(btn.quality)}
+                      disabled={reviewing}
                       className="flex flex-col items-center py-3 rounded-xl border transition-all hover:scale-105"
                       style={{ background: isDark ? btn.darkBg : btn.bg, borderColor: isDark ? btn.darkBorder : btn.border }}
                     >

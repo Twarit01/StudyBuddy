@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import { generateQuiz, evaluateAnswer, submitQuiz } from '../api/quiz'
+import { listDocuments } from '../api/documents'
 import { exportQuizPDF } from '../utils/exportPDF'
 
 const TOPICS = [
@@ -9,13 +11,18 @@ const TOPICS = [
 ]
 
 export default function Quiz() {
+  const location = useLocation()
   const [config, setConfig] = useState({
     topic: '', quizType: 'mcq', difficulty: 'medium',
-    count: 5, timedMode: false, timePerQuestion: 60,
+    count: 5, timedMode: false, timePerQuestion: 60, documentId: '',
   })
+  const [documents, setDocuments]     = useState([])
+  const [documentsError, setDocumentsError] = useState(null)
   const [questions, setQuestions]     = useState([])
   const [answers, setAnswers]         = useState({})
   const [evaluations, setEvaluations] = useState({})
+  const [evaluating, setEvaluating]   = useState({})
+  const [evaluationErrors, setEvaluationErrors] = useState({})
   const [score, setScore]             = useState(null)
   const [generating, setGenerating]   = useState(false)
   const [submitting, setSubmitting]   = useState(false)
@@ -25,18 +32,35 @@ export default function Quiz() {
   const [timerActive, setTimerActive] = useState(false)
   const [startTime, setStartTime]     = useState(null)
   const timerRef = useRef(null)
+  const submittingRef = useRef(false)
 
   useEffect(() => {
-    if (timerActive && timeLeft > 0) {
-      timerRef.current = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) { clearInterval(timerRef.current); setTimerActive(false); handleSubmit(true); return 0 }
-          return prev - 1
-        })
-      }, 1000)
+    const fetchDocuments = async () => {
+      try { setDocuments(await listDocuments()) }
+      catch (err) { console.error(err); setDocumentsError('Could not load documents') }
     }
+    fetchDocuments()
+  }, [])
+
+  useEffect(() => {
+    if (location.state?.documentId) {
+      setConfig(prev => ({ ...prev, documentId: String(location.state.documentId) }))
+    }
+  }, [location.state])
+
+  useEffect(() => {
+    if (!timerActive) return
+    timerRef.current = setInterval(() => {
+      setTimeLeft(prev => Math.max(prev - 1, 0))
+    }, 1000)
     return () => clearInterval(timerRef.current)
   }, [timerActive])
+
+  useEffect(() => {
+    if (timerActive && timeLeft === 0 && questions.length > 0) {
+      handleSubmit(true)
+    }
+  }, [timerActive, timeLeft, questions.length])
 
   const formatTime = (secs) => `${Math.floor(secs / 60)}:${(secs % 60).toString().padStart(2, '0')}`
 
@@ -45,11 +69,11 @@ export default function Quiz() {
 
   const handleGenerate = async () => {
     setGenerating(true); setError(null)
-    setQuestions([]); setAnswers({}); setEvaluations({})
+    setQuestions([]); setAnswers({}); setEvaluations({}); setEvaluationErrors({}); setEvaluating({})
     setScore(null); setSubmitted(false)
     clearInterval(timerRef.current); setTimerActive(false)
     try {
-      const data = await generateQuiz(config.topic || 'General Engineering', config.quizType, config.difficulty, config.count)
+      const data = await generateQuiz(config.topic || 'General Engineering', config.quizType, config.difficulty, config.count, config.documentId || null)
       setQuestions(data.questions)
       if (config.timedMode) {
         const t = config.timePerQuestion * data.questions.length
@@ -60,24 +84,53 @@ export default function Quiz() {
   }
 
   const handleMCQAnswer = (qi, letter) => { if (!submitted) setAnswers(p => ({ ...p, [qi]: letter })) }
-  const handleTextAnswer = (qi, val) => setAnswers(p => ({ ...p, [qi]: val }))
+  const handleTextAnswer = (qi, val) => {
+    if (submitted) return
+    setAnswers(p => ({ ...p, [qi]: val }))
+    setEvaluationErrors(p => ({ ...p, [qi]: null }))
+  }
 
   const handleEvaluateShort = async (qi) => {
     const q = questions[qi]; const ans = answers[qi]; if (!ans) return
-    try { const r = await evaluateAnswer(q.question, ans, q.answer, q.key_points || []); setEvaluations(p => ({ ...p, [qi]: r })) }
-    catch (err) { console.error(err) }
+    setEvaluating(p => ({ ...p, [qi]: true }))
+    setEvaluationErrors(p => ({ ...p, [qi]: null }))
+    try {
+      const r = await evaluateAnswer(q.question, ans, q.answer, q.key_points || [])
+      setEvaluations(p => ({ ...p, [qi]: r }))
+      return r
+    } catch (err) {
+      const message = err.response?.data?.detail || 'Could not check this answer. Please try again.'
+      setEvaluationErrors(p => ({ ...p, [qi]: message }))
+      throw err
+    } finally {
+      setEvaluating(p => ({ ...p, [qi]: false }))
+    }
+  }
+
+  const evaluatePendingShortAnswers = async () => {
+    const nextEvaluations = { ...evaluations }
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i]
+      if ((q.type === 'short' || q.type === 'formula') && answers[i]?.trim() && !nextEvaluations[i]) {
+        const result = await handleEvaluateShort(i)
+        nextEvaluations[i] = result
+      }
+    }
+    return nextEvaluations
   }
 
   const handleSubmit = async (auto = false) => {
-    if (submitting) return
-    setSubmitting(true); clearInterval(timerRef.current); setTimerActive(false)
+    if (submittingRef.current) return
+    submittingRef.current = true
+    setSubmitting(true); setError(null); clearInterval(timerRef.current); setTimerActive(false)
     const timeTaken = startTime ? Math.round((Date.now() - startTime) / 1000) : null
     let correct = 0
-    questions.forEach((q, i) => {
-      if (q.type === 'mcq' && answers[i] === q.correct_answer) correct++
-      if ((q.type === 'short' || q.type === 'formula') && evaluations[i]?.is_correct) correct++
-    })
     try {
+      const resolvedEvaluations = await evaluatePendingShortAnswers()
+      questions.forEach((q, i) => {
+        if (q.type === 'mcq' && answers[i] === q.correct_answer) correct++
+        if ((q.type === 'short' || q.type === 'formula') && resolvedEvaluations[i]?.is_correct) correct++
+      })
       await submitQuiz({
         topic: config.topic || 'General Engineering', quiz_type: config.quizType,
         difficulty: config.difficulty, total_questions: questions.length,
@@ -85,19 +138,23 @@ export default function Quiz() {
         time_taken_seconds: timeTaken, is_timed_exam: config.timedMode,
       })
       setScore({ correct, total: questions.length, timeTaken, auto }); setSubmitted(true)
-    } catch (err) { console.error(err) }
-    finally { setSubmitting(false) }
+    } catch (err) {
+      console.error(err)
+      setError(err.response?.data?.detail || 'Could not submit quiz. Please try again.')
+      if (config.timedMode && !submitted && timeLeft > 0) setTimerActive(true)
+    }
+    finally { submittingRef.current = false; setSubmitting(false) }
   }
 
   const handleReset = () => {
-    setQuestions([]); setAnswers({}); setEvaluations({})
+    setQuestions([]); setAnswers({}); setEvaluations({}); setEvaluationErrors({}); setEvaluating({})
     setScore(null); setSubmitted(false)
     clearInterval(timerRef.current); setTimerActive(false); setTimeLeft(0); setStartTime(null)
   }
 
   return (
     <div className="h-full overflow-y-auto bg-[#F8FAFC] dark:bg-[#0B0F1A] transition-colors duration-200">
-      <div className="max-w-3xl mx-auto px-8 py-8">
+      <div className="max-w-3xl mx-auto px-4 sm:px-8 py-6 sm:py-8">
 
         {/* Header */}
         <div className="mb-8">
@@ -108,10 +165,12 @@ export default function Quiz() {
         {/* Config */}
         <div className="p-6 mb-6 rounded-2xl border bg-white dark:bg-[#141B2D] border-[#E2E8F0] dark:border-[#1F2937] shadow-sm">
           <h2 className="text-title text-[#0F172A] dark:text-[#F1F5F9] mb-4">Configure quiz</h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
             {[
               { label: 'Topic', key: 'topic', type: 'select',
                 options: [{ value: '', label: 'Any topic' }, ...TOPICS.map(t => ({ value: t, label: t }))] },
+              { label: 'Document', key: 'documentId', type: 'select',
+                options: [{ value: '', label: 'All documents' }, ...documents.map(d => ({ value: String(d.id), label: d.original_name }))] },
               { label: 'Type', key: 'quizType', type: 'select',
                 options: [{ value: 'mcq', label: 'Multiple choice' }, { value: 'short', label: 'Short answer' }, { value: 'formula', label: 'Formula recall' }] },
               { label: 'Difficulty', key: 'difficulty', type: 'select',
@@ -133,10 +192,11 @@ export default function Quiz() {
               </div>
             ))}
           </div>
+          {documentsError && <p className="text-xs text-red-500 mb-4">{documentsError}</p>}
 
           {/* Timed mode */}
-          <div className="flex items-center justify-between p-4 rounded-xl mb-4 bg-[#F8FAFC] dark:bg-[#0B0F1A] border border-[#E2E8F0] dark:border-[#1F2937]">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl mb-4 bg-[#F8FAFC] dark:bg-[#0B0F1A] border border-[#E2E8F0] dark:border-[#1F2937]">
+            <div className="flex items-center gap-3 flex-wrap">
               <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-[#EEF2FF] dark:bg-indigo-500/15">
                 <i className="ti ti-clock" style={{ fontSize: 18, color: '#6366F1' }} aria-hidden="true"></i>
               </div>
@@ -185,7 +245,7 @@ export default function Quiz() {
 
         {/* Timer */}
         {timerActive && timeLeft > 0 && (
-          <div className="p-4 mb-6 flex items-center gap-4 rounded-2xl border bg-white dark:bg-[#141B2D] border-[#E2E8F0] dark:border-[#1F2937] shadow-sm">
+          <div className="p-4 mb-6 flex flex-col sm:flex-row sm:items-center gap-4 rounded-2xl border bg-white dark:bg-[#141B2D] border-[#E2E8F0] dark:border-[#1F2937] shadow-sm">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-red-50 dark:bg-red-500/10">
               <i className="ti ti-clock" style={{ fontSize: 18, color: timerColor }} aria-hidden="true"></i>
             </div>
@@ -244,7 +304,7 @@ export default function Quiz() {
                     style={{ color: '#6366F1' }}>
                     {qi + 1}
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-[#0F172A] dark:text-[#F1F5F9] leading-relaxed">{q.question}</p>
                     <div className="flex gap-1.5 mt-2">
                       <span className="badge badge-indigo">{q.topic || 'Engineering'}</span>
@@ -255,7 +315,7 @@ export default function Quiz() {
 
                 {/* MCQ */}
                 {q.type === 'mcq' && q.options && (
-                  <div className="flex flex-col gap-2 ml-10">
+                  <div className="flex flex-col gap-2 sm:ml-10">
                     {q.options.map((opt, oi) => {
                       const letter = ['A','B','C','D'][oi]
                       const isSelected = answers[qi] === letter
@@ -295,11 +355,11 @@ export default function Quiz() {
 
                 {/* Short / Formula */}
                 {(q.type === 'short' || q.type === 'formula') && (
-                  <div className="ml-10">
+                  <div className="sm:ml-10">
                     <textarea
                       value={answers[qi] || ''}
                       onChange={e => handleTextAnswer(qi, e.target.value)}
-                      disabled={!!evaluations[qi]}
+                      disabled={submitted || !!evaluations[qi] || evaluating[qi]}
                       placeholder="Type your answer here..."
                       rows={3}
                       className="w-full rounded-xl px-3 py-2.5 text-sm resize-none outline-none border transition-colors
@@ -309,10 +369,15 @@ export default function Quiz() {
                     {!evaluations[qi] && !submitted && (
                       <button
                         onClick={() => handleEvaluateShort(qi)}
-                        disabled={!answers[qi]}
+                        disabled={!answers[qi] || evaluating[qi]}
                         className="btn-secondary text-xs py-1.5 px-3 mt-2">
-                        Check answer
+                        {evaluating[qi] ? 'Checking...' : 'Check answer'}
                       </button>
+                    )}
+                    {evaluationErrors[qi] && (
+                      <div className="mt-2 px-3 py-2 rounded-lg text-xs bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300">
+                        {evaluationErrors[qi]}
+                      </div>
                     )}
                     {evaluations[qi] && (
                       <div className="mt-3 px-4 py-3 rounded-xl text-xs leading-relaxed"

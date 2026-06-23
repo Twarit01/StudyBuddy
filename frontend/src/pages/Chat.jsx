@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import { askQuestion, getSessions, getSessionMessages, deleteSession } from '../api/chat'
+import { listDocuments } from '../api/documents'
 import SourceCitation from '../components/SourceCitation'
 import ReactMarkdown from 'react-markdown'
 import remarkMath from 'remark-math'
@@ -14,22 +16,50 @@ const SUGGESTED_QUESTIONS = [
 ]
 
 export default function Chat() {
+  const location = useLocation()
   const [sessions, setSessions]               = useState([])
   const [activeSession, setActiveSession]     = useState(null)
   const [messages, setMessages]               = useState([])
+  const [documents, setDocuments]             = useState([])
+  const [documentId, setDocumentId]           = useState('')
   const [input, setInput]                     = useState('')
   const [loading, setLoading]                 = useState(false)
   const [loadingMessages, setLoadingMessages] = useState(false)
+  const [sessionError, setSessionError]       = useState(null)
+  const [documentsError, setDocumentsError]   = useState(null)
   const messagesEndRef = useRef(null)
   const inputRef       = useRef(null)
   const textareaRef    = useRef(null)
 
-  useEffect(() => { loadSessions() }, [])
+  useEffect(() => {
+    loadSessions()
+    loadDocuments()
+  }, [])
+
+  useEffect(() => {
+    if (!location.state?.initialQuestion) return
+    setInput(location.state.initialQuestion)
+    setTimeout(() => inputRef.current?.focus(), 50)
+  }, [location.state])
+
+  useEffect(() => {
+    if (location.state?.documentId) {
+      setDocumentId(String(location.state.documentId))
+    }
+  }, [location.state])
+
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
   const loadSessions = async () => {
+    setSessionError(null)
     try { const data = await getSessions(); setSessions(data) }
-    catch (err) { console.error(err) }
+    catch (err) { console.error(err); setSessionError('Could not load recent chats') }
+  }
+
+  const loadDocuments = async () => {
+    setDocumentsError(null)
+    try { const data = await listDocuments(); setDocuments(data) }
+    catch (err) { console.error(err); setDocumentsError('Could not load documents') }
   }
 
   const loadMessages = async (sessionId) => {
@@ -55,7 +85,7 @@ export default function Chat() {
     const tempMsg = { id: Date.now(), role: 'user', content: question, created_at: new Date().toISOString() }
     setMessages(prev => [...prev, tempMsg])
     try {
-      const data = await askQuestion(question, activeSession)
+      const data = await askQuestion(question, activeSession, documentId || null)
       if (!activeSession) { setActiveSession(data.session_id); loadSessions() }
       setMessages(prev => [...prev, { ...data.message, sources: data.sources, confidence: data.confidence }])
     } catch (err) {
@@ -85,6 +115,17 @@ export default function Chat() {
     e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px'
   }
 
+  const parseSources = (sources) => {
+    if (!sources) return []
+    if (Array.isArray(sources)) return sources
+    try {
+      const parsed = JSON.parse(sources)
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  }
+
   return (
     <div className="flex h-full overflow-hidden bg-[#F8FAFC] dark:bg-[#0B0F1A] transition-colors duration-200">
 
@@ -101,6 +142,11 @@ export default function Chat() {
 
         <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-0.5">
           <p className="text-label px-3 py-2 text-[#CBD5E1] dark:text-slate-600">Recent</p>
+          {sessionError && (
+            <div className="mx-3 mb-2 px-3 py-2 rounded-lg text-xs bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300">
+              {sessionError}
+            </div>
+          )}
           {sessions.length === 0 ? (
             <div className="flex flex-col items-center py-8 text-center px-3">
               <i className="ti ti-message-circle" style={{ fontSize: 24, color: '#CBD5E1' }} aria-hidden="true"></i>
@@ -133,7 +179,25 @@ export default function Chat() {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-3xl mx-auto px-6 py-8 flex flex-col gap-6">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6">
+
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-2xl border bg-white dark:bg-[#141B2D] border-[#E2E8F0] dark:border-[#1F2937] px-3 py-2 shadow-sm">
+              <div className="flex items-center gap-2 text-xs font-medium text-[#64748B] dark:text-[#94A3B8]">
+                <i className="ti ti-file-text" style={{ fontSize: 14 }} aria-hidden="true"></i>
+                Document scope
+              </div>
+              <select
+                value={documentId}
+                onChange={e => setDocumentId(e.target.value)}
+                className="flex-1 rounded-lg px-2 py-1.5 text-xs outline-none border bg-[#F8FAFC] dark:bg-[#0B0F1A] border-[#E2E8F0] dark:border-[#1F2937] text-[#0F172A] dark:text-[#F1F5F9]"
+              >
+                <option value="">All documents</option>
+                {documents.map(doc => (
+                  <option key={doc.id} value={doc.id}>{doc.original_name}</option>
+                ))}
+              </select>
+              {documentsError && <span className="text-xs text-red-500">{documentsError}</span>}
+            </div>
 
             {messages.length === 0 && !loadingMessages && (
               <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -180,7 +244,7 @@ export default function Chat() {
                   </div>
                 )}
 
-                <div className={`flex flex-col max-w-[78%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                <div className={`flex flex-col max-w-[88%] sm:max-w-[78%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                   <div
                     className={`px-4 py-3 rounded-2xl text-sm leading-relaxed
                       ${msg.role === 'user'
@@ -197,10 +261,10 @@ export default function Chat() {
                     ) : msg.content}
                   </div>
 
-                  {msg.role === 'assistant' && msg.sources && (
+                  {msg.role === 'assistant' && parseSources(msg.sources).length > 0 && (
                     <div className="mt-2 w-full">
                       <SourceCitation
-                        sources={typeof msg.sources === 'string' ? JSON.parse(msg.sources) : msg.sources}
+                        sources={parseSources(msg.sources)}
                         confidence={msg.confidence}
                       />
                     </div>
@@ -240,7 +304,7 @@ export default function Chat() {
         </div>
 
         {/* Input bar */}
-        <div className="px-6 py-4 bg-white dark:bg-[#0D1220] border-t border-[#F1F5F9] dark:border-[#1F2937]">
+        <div className="px-4 sm:px-6 py-4 bg-white dark:bg-[#0D1220] border-t border-[#F1F5F9] dark:border-[#1F2937]">
           <div className="max-w-3xl mx-auto">
             <div className="flex items-end gap-3 p-3 rounded-2xl transition-all bg-[#F8FAFC] dark:bg-[#0B0F1A] border border-[#E2E8F0] dark:border-[#1F2937]">
               <textarea

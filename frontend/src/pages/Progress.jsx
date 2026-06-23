@@ -8,12 +8,21 @@ import {
   ResponsiveContainer, Cell
 } from 'recharts'
 
+const localDateKey = (date) => {
+  const d = new Date(date)
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 export default function Progress() {
   const [quizHistory, setQuizHistory]       = useState([])
   const [fcStats, setFcStats]               = useState({})
   const [topicStats, setTopicStats]         = useState([])
   const [activityMap, setActivityMap]       = useState({})
   const [loading, setLoading]               = useState(true)
+  const [loadError, setLoadError]           = useState(null)
   const [streak, setStreak]                 = useState(0)
   const [studyPlan, setStudyPlan]           = useState(null)
   const [generatingPlan, setGeneratingPlan] = useState(false)
@@ -32,7 +41,7 @@ export default function Progress() {
   useEffect(() => { fetchAll() }, [])
 
   const fetchAll = async () => {
-    setLoading(true)
+    setLoading(true); setLoadError(null)
     try {
       const [history, fc] = await Promise.all([getQuizHistory(), getFlashcardStats()])
       setQuizHistory(history); setFcStats(fc)
@@ -53,7 +62,7 @@ export default function Progress() {
 
       const activity = {}
       history.forEach((a) => {
-        const d = new Date(a.created_at).toISOString().split('T')[0]
+        const d = localDateKey(a.created_at)
         activity[d] = (activity[d] || 0) + 1
       })
       setActivityMap(activity)
@@ -62,11 +71,11 @@ export default function Progress() {
       const today = new Date()
       for (let i = 0; i < 365; i++) {
         const d = new Date(today); d.setDate(d.getDate() - i)
-        const key = d.toISOString().split('T')[0]
+        const key = localDateKey(d)
         if (activity[key]) s++; else if (i > 0) break
       }
       setStreak(s)
-    } catch (err) { console.error('Failed to load progress', err) }
+    } catch (err) { console.error('Failed to load progress', err); setLoadError('Could not load your progress. Please refresh and try again.') }
     finally { setLoading(false) }
   }
 
@@ -90,7 +99,7 @@ export default function Progress() {
 
   const last30 = Array.from({ length: 30 }, (_, i) => {
     const d = new Date(); d.setDate(d.getDate() - (29 - i))
-    const key = d.toISOString().split('T')[0]
+    const key = localDateKey(d)
     return { date: key, count: activityMap[key] || 0 }
   })
 
@@ -110,7 +119,7 @@ export default function Progress() {
 
   return (
     <div className="h-full overflow-y-auto bg-[#F8FAFC] dark:bg-[#0B0F1A] transition-colors duration-200">
-      <div className="max-w-6xl mx-auto px-8 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 py-6 sm:py-8">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
@@ -118,7 +127,7 @@ export default function Progress() {
             <h1 className="text-display text-[#0F172A] dark:text-[#F1F5F9]">Progress</h1>
             <p className="text-body mt-1 text-[#64748B] dark:text-[#94A3B8]">Track your learning over time</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
             <button onClick={() => exportProgressPDF({ quizHistory, fcStats, topicStats, streak })} className="btn-secondary text-sm">
               <i className="ti ti-download" style={{ fontSize: 15 }} aria-hidden="true"></i>
               Export report
@@ -173,6 +182,10 @@ export default function Progress() {
         {loading ? (
           <div className="flex justify-center py-20">
             <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : loadError ? (
+          <div className="px-4 py-3 rounded-xl text-sm bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-500/30">
+            {loadError}
           </div>
         ) : (
           <>

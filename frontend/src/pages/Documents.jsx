@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { listSubjects, createSubject, deleteSubject, getSubjectOverview } from '../api/subjects'
 import { listDocuments, uploadDocument, deleteDocument, assignSubject, regenerateSummary, generateFormulaSheet } from '../api/documents'
 import { exportFormulaSheetPDF, exportSummaryPDF } from '../utils/exportPDF'
@@ -7,6 +8,7 @@ const SUBJECT_COLORS = ['#6366F1','#22D3EE','#10B981','#F59E0B','#EC4899','#EF44
 const SUBJECT_EMOJIS = ['📚','💻','⚡','🔬','📐','🧮','🌊','⚙️','📊','🧪']
 
 export default function Documents() {
+  const navigate = useNavigate()
   const [subjects, setSubjects]               = useState([])
   const [documents, setDocuments]             = useState([])
   const [activeSubject, setActiveSubject]     = useState(null)
@@ -24,6 +26,7 @@ export default function Documents() {
   const [dragOver, setDragOver]               = useState(false)
   const [subjectOverview, setSubjectOverview] = useState(null)
   const [loadingOverview, setLoadingOverview] = useState(false)
+  const [error, setError]                     = useState(null)
 
   useEffect(() => { fetchSubjects(); fetchDocuments() }, [])
   useEffect(() => { fetchDocuments(activeSubject); setSubjectOverview(null) }, [activeSubject])
@@ -34,19 +37,19 @@ export default function Documents() {
   }
 
   const fetchDocuments = async (subjectId = null) => {
-    setLoading(true)
+    setLoading(true); setError(null)
     try { const d = await listDocuments(subjectId); setDocuments(Array.isArray(d) ? d : []) }
-    catch { setDocuments([]) }
+    catch { setDocuments([]); setError('Could not load documents. Please refresh and try again.') }
     finally { setLoading(false) }
   }
 
   const handleFileSelect = async (file) => {
     if (!file) return
-    setUploading(true); setUploadProgress(0)
+    setUploading(true); setUploadProgress(0); setError(null)
     try {
       await uploadDocument(file, activeSubject, pct => setUploadProgress(pct))
       fetchDocuments(activeSubject); fetchSubjects()
-    } catch (err) { console.error(err) }
+    } catch (err) { console.error(err); setError(err.response?.data?.detail || 'Upload failed. Please try again.') }
     finally { setUploading(false); setUploadProgress(0) }
   }
 
@@ -63,7 +66,7 @@ export default function Documents() {
       await fetchSubjects()
       setShowNewSubject(false)
       setNewSubject({ name: '', color: '#6366F1', emoji: '📚' })
-    } catch (err) { console.error(err) }
+    } catch (err) { console.error(err); setError(err.response?.data?.detail || 'Could not generate summary.') }
   }
 
   const handleDeleteSubject = async (subjectId) => {
@@ -78,7 +81,7 @@ export default function Documents() {
       setDocuments(prev => prev.filter(d => d.id !== docId))
       if (selectedDoc?.id === docId) setSelectedDoc(null)
       fetchSubjects()
-    } catch (err) { console.error(err) }
+    } catch (err) { console.error(err); setError(err.response?.data?.detail || 'Could not extract formulas.') }
   }
 
   const handleSelectDoc = (doc) => {
@@ -273,10 +276,16 @@ export default function Documents() {
           </div>
         )}
 
-        <div className="flex-1 overflow-hidden flex">
+        {error && (
+          <div className="px-6 py-3 bg-red-50 dark:bg-red-500/10 border-b border-red-200 dark:border-red-500/20 text-sm text-red-600 dark:text-red-300">
+            {error}
+          </div>
+        )}
+
+        <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
 
           {/* Document grid */}
-          <div className={`overflow-y-auto transition-all duration-300 ${selectedDoc ? 'w-[420px] flex-shrink-0' : 'flex-1'}`}>
+          <div className={`overflow-y-auto transition-all duration-300 ${selectedDoc ? 'lg:w-[420px] lg:flex-shrink-0 max-h-[45%] lg:max-h-none' : 'flex-1'}`}>
 
             {/* Drop zone (when no docs) */}
             {!loading && documents.length === 0 && (
@@ -409,6 +418,27 @@ export default function Documents() {
                     {tab.label}
                   </button>
                 ))}
+              </div>
+
+              <div className="px-6 py-3 flex flex-wrap gap-2 border-b border-[#F1F5F9] dark:border-[#1F2937]">
+                <button
+                  onClick={() => navigate('/chat', { state: { documentId: selectedDoc.id } })}
+                  className="btn-secondary text-xs py-2 px-3">
+                  <i className="ti ti-message-circle" style={{ fontSize: 13 }} aria-hidden="true"></i>
+                  Ask about this
+                </button>
+                <button
+                  onClick={() => navigate('/quiz', { state: { documentId: selectedDoc.id } })}
+                  className="btn-secondary text-xs py-2 px-3">
+                  <i className="ti ti-pencil" style={{ fontSize: 13 }} aria-hidden="true"></i>
+                  Quiz from this
+                </button>
+                <button
+                  onClick={() => navigate('/flashcards', { state: { documentId: selectedDoc.id } })}
+                  className="btn-secondary text-xs py-2 px-3">
+                  <i className="ti ti-cards" style={{ fontSize: 13 }} aria-hidden="true"></i>
+                  Cards from this
+                </button>
               </div>
 
               {/* Panel content */}

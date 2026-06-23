@@ -10,6 +10,14 @@ import {
   LineChart, Line
 } from 'recharts'
 
+const localDateKey = (date) => {
+  const d = new Date(date)
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 export default function Dashboard() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -23,12 +31,14 @@ export default function Dashboard() {
   const [weakTopics, setWeakTopics] = useState([])
   const [scoreTrend, setScoreTrend] = useState([])
   const [loading, setLoading]       = useState(true)
+  const [error, setError]           = useState(null)
   const [chatInput, setChatInput]   = useState('')
   const [planItems, setPlanItems]   = useState([])
   const [planLoading, setPlanLoading] = useState(false)
 
   useEffect(() => {
     const fetchAll = async () => {
+      setError(null)
       try {
         const [quizHistory, fcStats, docs] = await Promise.all([
           getQuizHistory(), getFlashcardStats(), listDocuments()
@@ -51,12 +61,12 @@ export default function Dashboard() {
         const weak = [...allTopics].sort((a, b) => a.accuracy - b.accuracy).slice(0, 3)
 
         const activity = {}
-        quizHistory.forEach(a => { const d = new Date(a.created_at).toISOString().split('T')[0]; activity[d] = true })
+        quizHistory.forEach(a => { activity[localDateKey(a.created_at)] = true })
         let s = 0
         const today = new Date()
         for (let i = 0; i < 365; i++) {
           const d = new Date(today); d.setDate(d.getDate() - i)
-          const key = d.toISOString().split('T')[0]
+          const key = localDateKey(d)
           if (activity[key]) s++; else if (i > 0) break
         }
 
@@ -66,8 +76,8 @@ export default function Dashboard() {
         weekStart.setDate(today.getDate() - dayOfWeek)
         const week = dayLabels.map((label, i) => {
           const d = new Date(weekStart); d.setDate(weekStart.getDate() + i)
-          const key = d.toISOString().split('T')[0]
-          return { label, filled: !!activity[key], isToday: key === today.toISOString().split('T')[0] }
+          const key = localDateKey(d)
+          return { label, filled: !!activity[key], isToday: key === localDateKey(today) }
         })
 
         const trend = quizHistory
@@ -84,7 +94,7 @@ export default function Dashboard() {
         setStreak(s)
         setStreakDays(week)
         setScoreTrend(trend.length ? trend : [{ i: 0, score: 0 }])
-      } catch (err) { console.error(err) }
+      } catch (err) { console.error(err); setError('Could not load your dashboard. Please refresh and try again.') }
       finally { setLoading(false) }
     }
     fetchAll()
@@ -112,7 +122,10 @@ export default function Dashboard() {
         items.push({ icon: 'ti-sparkles', label: 'Take a quiz to build your study plan', tag: 'Get started', tagColor: 'indigo', action: () => navigate('/quiz') })
       }
       setPlanItems(items)
-    } catch (err) { console.error(err) }
+    } catch (err) {
+      console.error(err)
+      setPlanItems([{ icon: 'ti-alert-circle', label: 'Study plan is unavailable right now', tag: 'Try later', tagColor: 'red', action: () => {} }])
+    }
     finally { setPlanLoading(false) }
   }
 
@@ -129,10 +142,10 @@ export default function Dashboard() {
 
   return (
     <div className="h-full overflow-y-auto bg-[#F8FAFC] dark:bg-[#0B0F1A] transition-colors duration-200">
-      <div className="flex">
+      <div className="flex flex-col xl:flex-row">
 
         {/* MAIN COLUMN */}
-        <div className="flex-1 px-8 py-8 max-w-5xl mx-auto">
+        <div className="flex-1 px-4 sm:px-8 py-6 sm:py-8 max-w-5xl mx-auto w-full">
 
           {/* Header */}
           <div className="flex items-start justify-between mb-6">
@@ -167,6 +180,10 @@ export default function Dashboard() {
           {loading ? (
             <div className="flex justify-center py-20">
               <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : error ? (
+            <div className="px-4 py-3 rounded-xl text-sm bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-500/30">
+              {error}
             </div>
           ) : (
             <>
@@ -297,7 +314,7 @@ export default function Dashboard() {
                       <p className="text-xs text-[#94A3B8] mt-1">Take a quiz to see your topic breakdown</p>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                       <div className="w-32 h-32 flex-shrink-0">
                         <ResponsiveContainer width="100%" height="100%">
                           <RadarChart data={topicStats} outerRadius="75%">
@@ -365,7 +382,7 @@ export default function Dashboard() {
 
         {/* RIGHT RAIL */}
         {!loading && (
-          <div className="w-72 flex-shrink-0 px-5 py-8 flex flex-col gap-4 border-l border-[#F1F5F9] dark:border-[#1F2937]">
+          <div className="w-full xl:w-72 flex-shrink-0 px-4 sm:px-5 py-6 xl:py-8 flex flex-col gap-4 border-t xl:border-t-0 xl:border-l border-[#F1F5F9] dark:border-[#1F2937]">
 
             {/* Study score gauge */}
             <div className="p-5 rounded-2xl border bg-white dark:bg-[#141B2D] border-[#E2E8F0] dark:border-[#1F2937] shadow-sm">
