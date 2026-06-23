@@ -35,3 +35,15 @@ export const getQuizAttempt = async (attemptId) => {
   const res = await client.get(`/quiz/history/${attemptId}`)
   return res.data
 }
+
+export const getQuizMistakes = async (includeResolved = false, limit = 50) => {
+  const res = await client.get('/quiz/mistakes', {
+    params: { include_resolved: includeResolved, limit },
+  })
+  return res.data
+}
+
+export const resolveQuizMistake = async (mistakeId) => {
+  const res = await client.post(`/quiz/mistakes/${mistakeId}/resolve`)
+  return res.data
+}

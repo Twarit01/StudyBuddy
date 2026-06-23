@@ -110,16 +110,25 @@ export default function Dashboard() {
     try {
       const data = await getStudyPlan()
       const items = []
-      if (data.due_cards_today > 0) {
-        items.push({ icon: 'ti-cards', label: `Review ${data.due_cards_today} flashcard${data.due_cards_today > 1 ? 's' : ''}`, tag: 'Due today', tagColor: 'red', action: () => navigate('/flashcards') })
+      const actions = {
+        flashcards: () => navigate('/flashcards', { state: { mode: 'due' } }),
+        mistakes: () => navigate('/revision'),
+        quiz: () => navigate('/quiz'),
+        explore: () => navigate('/documents'),
       }
-      if (data.weak_topics?.length) {
-        data.weak_topics.slice(0, 3).forEach((t, i) => {
-          items.push({ icon: 'ti-pencil', label: `Quiz on ${t.topic}`, tag: i === 0 ? 'High priority' : 'Medium', tagColor: i === 0 ? 'amber' : 'slate', action: () => navigate('/quiz') })
+      if (data.today_tasks?.length) {
+        data.today_tasks.slice(0, 3).forEach((task) => {
+          items.push({
+            icon: task.type === 'flashcards' ? 'ti-cards' : task.type === 'mistakes' ? 'ti-alert-circle' : 'ti-pencil',
+            label: task.title,
+            tag: `${task.minutes} min`,
+            tagColor: task.priority === 'high' ? 'red' : task.priority === 'medium' ? 'amber' : 'slate',
+            action: actions[task.type] || (() => navigate('/revision')),
+          })
         })
       }
       if (items.length === 0) {
-        items.push({ icon: 'ti-sparkles', label: 'Take a quiz to build your study plan', tag: 'Get started', tagColor: 'indigo', action: () => navigate('/quiz') })
+        items.push({ icon: 'ti-sparkles', label: 'Start a smart revision session', tag: 'Get started', tagColor: 'indigo', action: () => navigate('/revision') })
       }
       setPlanItems(items)
     } catch (err) {
@@ -266,8 +275,8 @@ export default function Dashboard() {
                       })}
                     </div>
                   )}
-                  <button onClick={() => navigate('/progress')} className="text-xs font-medium text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1">
-                    View full plan
+                  <button onClick={() => navigate('/revision')} className="text-xs font-medium text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1">
+                    Start smart revision
                     <i className="ti ti-arrow-right" style={{ fontSize: 12 }} aria-hidden="true"></i>
                   </button>
                 </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { getQuizHistory } from '../api/quiz'
 import { getFlashcardStats } from '../api/flashcards'
 import { getStudyPlan } from '../api/progress'
@@ -17,6 +18,7 @@ const localDateKey = (date) => {
 }
 
 export default function Progress() {
+  const navigate = useNavigate()
   const [quizHistory, setQuizHistory]       = useState([])
   const [fcStats, setFcStats]               = useState({})
   const [topicStats, setTopicStats]         = useState([])
@@ -170,6 +172,29 @@ export default function Progress() {
                 <i className="ti ti-calendar-event" style={{ fontSize: 15 }} aria-hidden="true"></i>
                 {studyPlan.due_cards_today} flashcard{studyPlan.due_cards_today > 1 ? 's' : ''} due today
               </p>
+            )}
+            {studyPlan.today_tasks?.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                {studyPlan.today_tasks.slice(0, 3).map((task, i) => (
+                  <button
+                    key={`${task.type}-${i}`}
+                    onClick={() => navigate(task.type === 'flashcards' ? '/flashcards' : task.type === 'mistakes' ? '/revision' : '/quiz')}
+                    className="text-left p-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B0F1A] border border-[#E2E8F0] dark:border-[#1F2937] hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-colors">
+                    <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-300 mb-1">Today · {task.minutes} min</p>
+                    <p className="text-sm text-[#374151] dark:text-[#CBD5E1]">{task.title}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+            {studyPlan.weekly_plan?.length > 0 && (
+              <div className="mb-4 grid grid-cols-1 sm:grid-cols-5 gap-2">
+                {studyPlan.weekly_plan.map(day => (
+                  <div key={day.day} className="p-3 rounded-xl bg-white dark:bg-[#0B0F1A] border border-[#E2E8F0] dark:border-[#1F2937]">
+                    <p className="text-xs font-semibold text-[#0F172A] dark:text-[#F1F5F9]">{day.day}</p>
+                    <p className="text-[11px] mt-1 text-[#94A3B8] line-clamp-2">{day.focus}</p>
+                  </div>
+                ))}
+              </div>
             )}
             <div className="text-sm leading-relaxed whitespace-pre-wrap text-[#374151] dark:text-[#CBD5E1]">{studyPlan.study_plan}</div>
           </div>

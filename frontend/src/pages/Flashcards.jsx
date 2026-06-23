@@ -49,6 +49,9 @@ export default function Flashcards() {
     if (location.state?.documentId) {
       setConfig(prev => ({ ...prev, documentId: String(location.state.documentId) }))
     }
+    if (location.state?.mode === 'due') {
+      setMode('due')
+    }
   }, [location.state])
 
   const fetchCards = async () => {

@@ -2,7 +2,7 @@ import json
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
 
@@ -10,6 +10,7 @@ from core.database import get_db
 from core.dependencies import get_current_user
 from models.user import User
 from models.quiz_attempt import QuizAttempt
+from models.quiz_mistake import QuizMistake
 from services.quiz_generator import generate_quiz, evaluate_short_answer
 
 router = APIRouter()
@@ -29,7 +30,16 @@ class SubmitAnswerRequest(BaseModel):
     question: str
     student_answer: str
     expected_answer: str
-    key_points: Optional[List[str]] = []
+    key_points: List[str] = Field(default_factory=list)
+
+
+class QuizMistakeCreate(BaseModel):
+    topic: Optional[str] = None
+    quiz_type: str
+    question: str
+    student_answer: Optional[str] = None
+    correct_answer: Optional[str] = None
+    explanation: Optional[str] = None
 
 
 class SubmitQuizRequest(BaseModel):
@@ -39,6 +49,7 @@ class SubmitQuizRequest(BaseModel):
     total_questions: int
     correct_answers: int
     questions_data: Optional[str] = None  # JSON string of full quiz
+    mistakes: List[QuizMistakeCreate] = Field(default_factory=list)
     time_taken_seconds: Optional[int] = None
     is_timed_exam: bool = False
 
@@ -53,6 +64,24 @@ class QuizAttemptResponse(BaseModel):
     score_percentage: float
     is_timed_exam: bool
     created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class QuizMistakeResponse(BaseModel):
+    id: int
+    attempt_id: Optional[int]
+    topic: Optional[str]
+    quiz_type: str
+    question: str
+    student_answer: Optional[str]
+    correct_answer: Optional[str]
+    explanation: Optional[str]
+    is_resolved: bool
+    retry_count: int
+    created_at: datetime
+    resolved_at: Optional[datetime]
 
     class Config:
         from_attributes = True
@@ -185,7 +214,72 @@ def submit_quiz(
     db.commit()
     db.refresh(attempt)
 
+    for mistake_data in request.mistakes or []:
+        mistake = QuizMistake(
+            owner_id=current_user.id,
+            attempt_id=attempt.id,
+            topic=mistake_data.topic or request.topic,
+            quiz_type=mistake_data.quiz_type,
+            question=mistake_data.question,
+            student_answer=mistake_data.student_answer,
+            correct_answer=mistake_data.correct_answer,
+            explanation=mistake_data.explanation
+        )
+        db.add(mistake)
+
+    if request.mistakes:
+        db.commit()
+
     return attempt
+
+
+@router.get("/mistakes", response_model=List[QuizMistakeResponse])
+def get_quiz_mistakes(
+    include_resolved: bool = False,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get saved quiz mistakes for review and retry practice."""
+    limit = max(1, min(limit, 100))
+    query = db.query(QuizMistake).filter(QuizMistake.owner_id == current_user.id)
+    if not include_resolved:
+        query = query.filter(QuizMistake.is_resolved == False)
+
+    return (
+        query
+        .order_by(QuizMistake.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+
+@router.post("/mistakes/{mistake_id}/resolve", response_model=QuizMistakeResponse)
+def resolve_quiz_mistake(
+    mistake_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Mark a saved mistake as resolved after retry/review."""
+    mistake = (
+        db.query(QuizMistake)
+        .filter(
+            QuizMistake.id == mistake_id,
+            QuizMistake.owner_id == current_user.id
+        )
+        .first()
+    )
+
+    if not mistake:
+        raise HTTPException(status_code=404, detail="Mistake not found")
+
+    mistake.is_resolved = True
+    mistake.retry_count += 1
+    mistake.resolved_at = datetime.utcnow()
+    db.commit()
+    db.refresh(mistake)
+
+    return mistake
 
 
 @router.get("/history", response_model=List[QuizAttemptResponse])

@@ -11,6 +11,7 @@ const navSections = [
       { path: '/chat',       icon: 'ti-message-circle', label: 'Chat Assistant' },
       { path: '/flashcards', icon: 'ti-cards',          label: 'Flashcards' },
       { path: '/quiz',       icon: 'ti-pencil',         label: 'Quizzes' },
+      { path: '/revision',   icon: 'ti-list-check',     label: 'Smart Revision' },
     ]
   },
   {

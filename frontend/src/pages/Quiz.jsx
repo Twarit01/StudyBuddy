@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
-import { generateQuiz, evaluateAnswer, submitQuiz } from '../api/quiz'
+import { generateQuiz, evaluateAnswer, getQuizMistakes, resolveQuizMistake, submitQuiz } from '../api/quiz'
 import { listDocuments } from '../api/documents'
 import { exportQuizPDF } from '../utils/exportPDF'
 
@@ -18,6 +18,9 @@ export default function Quiz() {
   })
   const [documents, setDocuments]     = useState([])
   const [documentsError, setDocumentsError] = useState(null)
+  const [mistakes, setMistakes]       = useState([])
+  const [mistakesLoading, setMistakesLoading] = useState(false)
+  const [mistakesError, setMistakesError] = useState(null)
   const [questions, setQuestions]     = useState([])
   const [answers, setAnswers]         = useState({})
   const [evaluations, setEvaluations] = useState({})
@@ -40,11 +43,15 @@ export default function Quiz() {
       catch (err) { console.error(err); setDocumentsError('Could not load documents') }
     }
     fetchDocuments()
+    loadMistakes()
   }, [])
 
   useEffect(() => {
     if (location.state?.documentId) {
       setConfig(prev => ({ ...prev, documentId: String(location.state.documentId) }))
+    }
+    if (location.state?.retryTopic) {
+      setConfig(prev => ({ ...prev, topic: location.state.retryTopic, count: 3, difficulty: 'medium' }))
     }
   }, [location.state])
 
@@ -66,6 +73,13 @@ export default function Quiz() {
 
   const timerPct = questions.length ? timeLeft / (config.timePerQuestion * questions.length) : 0
   const timerColor = timerPct > 0.5 ? '#10B981' : timerPct > 0.25 ? '#F59E0B' : '#EF4444'
+
+  const loadMistakes = async () => {
+    setMistakesLoading(true); setMistakesError(null)
+    try { setMistakes(await getQuizMistakes(false, 8)) }
+    catch (err) { console.error(err); setMistakesError('Could not load mistake notebook') }
+    finally { setMistakesLoading(false) }
+  }
 
   const handleGenerate = async () => {
     setGenerating(true); setError(null)
@@ -119,6 +133,34 @@ export default function Quiz() {
     return nextEvaluations
   }
 
+  const buildMistakes = (resolvedEvaluations) => {
+    return questions.flatMap((q, i) => {
+      const studentAnswer = answers[i] || ''
+      if (q.type === 'mcq') {
+        if (studentAnswer === q.correct_answer) return []
+        return [{
+          topic: q.topic || config.topic || 'General Engineering',
+          quiz_type: q.type,
+          question: q.question,
+          student_answer: studentAnswer || 'No answer',
+          correct_answer: q.correct_answer,
+          explanation: q.explanation || null,
+        }]
+      }
+
+      const evaluation = resolvedEvaluations[i]
+      if (!studentAnswer.trim() || evaluation?.is_correct) return []
+      return [{
+        topic: q.topic || config.topic || 'General Engineering',
+        quiz_type: q.type,
+        question: q.question,
+        student_answer: studentAnswer,
+        correct_answer: q.answer,
+        explanation: evaluation?.feedback || q.explanation || null,
+      }]
+    })
+  }
+
   const handleSubmit = async (auto = false) => {
     if (submittingRef.current) return
     submittingRef.current = true
@@ -135,9 +177,11 @@ export default function Quiz() {
         topic: config.topic || 'General Engineering', quiz_type: config.quizType,
         difficulty: config.difficulty, total_questions: questions.length,
         correct_answers: correct, questions_data: JSON.stringify(questions),
+        mistakes: buildMistakes(resolvedEvaluations),
         time_taken_seconds: timeTaken, is_timed_exam: config.timedMode,
       })
       setScore({ correct, total: questions.length, timeTaken, auto }); setSubmitted(true)
+      loadMistakes()
     } catch (err) {
       console.error(err)
       setError(err.response?.data?.detail || 'Could not submit quiz. Please try again.')
@@ -152,6 +196,27 @@ export default function Quiz() {
     clearInterval(timerRef.current); setTimerActive(false); setTimeLeft(0); setStartTime(null)
   }
 
+  const handleResolveMistake = async (mistakeId) => {
+    try {
+      await resolveQuizMistake(mistakeId)
+      setMistakes(prev => prev.filter(m => m.id !== mistakeId))
+    } catch (err) {
+      console.error(err)
+      setMistakesError('Could not update this mistake')
+    }
+  }
+
+  const handleRetryMistake = (mistake) => {
+    setConfig(prev => ({
+      ...prev,
+      topic: mistake.topic || '',
+      quizType: mistake.quiz_type === 'formula' ? 'formula' : mistake.quiz_type === 'short' ? 'short' : 'mcq',
+      count: 3,
+      difficulty: 'medium',
+    }))
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   return (
     <div className="h-full overflow-y-auto bg-[#F8FAFC] dark:bg-[#0B0F1A] transition-colors duration-200">
       <div className="max-w-3xl mx-auto px-4 sm:px-8 py-6 sm:py-8">
@@ -160,6 +225,51 @@ export default function Quiz() {
         <div className="mb-8">
           <h1 className="text-display text-[#0F172A] dark:text-[#F1F5F9]">Quiz generator</h1>
           <p className="text-body mt-1 text-[#64748B] dark:text-[#94A3B8]">AI-generated questions from your uploaded study materials</p>
+        </div>
+
+        {/* Mistake notebook */}
+        <div className="p-5 mb-6 rounded-2xl border bg-white dark:bg-[#141B2D] border-[#E2E8F0] dark:border-[#1F2937] shadow-sm">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-title text-[#0F172A] dark:text-[#F1F5F9]">Mistake notebook</h2>
+              <p className="text-caption mt-0.5 text-[#94A3B8]">Missed quiz questions are saved here for retry practice</p>
+            </div>
+            <button onClick={loadMistakes} disabled={mistakesLoading} className="btn-secondary text-xs py-2 px-3">
+              <i className="ti ti-refresh" style={{ fontSize: 13 }} aria-hidden="true"></i>
+              Refresh
+            </button>
+          </div>
+          {mistakesError && (
+            <div className="mb-3 px-3 py-2 rounded-lg text-xs bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300">{mistakesError}</div>
+          )}
+          {mistakesLoading ? (
+            <div className="flex justify-center py-6">
+              <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : mistakes.length === 0 ? (
+            <div className="py-6 text-center text-sm text-[#94A3B8]">No open mistakes. Take a quiz to build your review list.</div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {mistakes.slice(0, 4).map(mistake => (
+                <div key={mistake.id} className="p-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0B0F1A] border border-[#E2E8F0] dark:border-[#1F2937]">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        <span className="badge badge-red">{mistake.topic || 'General'}</span>
+                        <span className="badge bg-white dark:bg-[#141B2D] text-[#64748B] dark:text-[#94A3B8]">{mistake.quiz_type}</span>
+                      </div>
+                      <p className="text-sm font-medium text-[#0F172A] dark:text-[#F1F5F9] line-clamp-2">{mistake.question}</p>
+                      <p className="text-xs mt-1 text-[#94A3B8]">Correct: {mistake.correct_answer || 'See explanation'}</p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-2 flex-shrink-0">
+                      <button onClick={() => handleRetryMistake(mistake)} className="btn-secondary text-xs py-1.5 px-3">Retry</button>
+                      <button onClick={() => handleResolveMistake(mistake.id)} className="btn-primary text-xs py-1.5 px-3">Resolved</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Config */}

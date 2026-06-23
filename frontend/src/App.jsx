@@ -10,6 +10,7 @@ import Chat       from './pages/Chat'
 import Quiz       from './pages/Quiz'
 import Flashcards from './pages/Flashcards'
 import Progress   from './pages/Progress'
+import Revision   from './pages/Revision'
 import Documents  from './pages/Documents'
 import Sidebar    from './components/Sidebar'
 
@@ -46,6 +47,9 @@ export default function App() {
             } />
             <Route path="/flashcards" element={
               <ProtectedRoute><AppLayout><Flashcards /></AppLayout></ProtectedRoute>
+            } />
+            <Route path="/revision" element={
+              <ProtectedRoute><AppLayout><Revision /></AppLayout></ProtectedRoute>
             } />
             <Route path="/progress" element={
               <ProtectedRoute><AppLayout><Progress /></AppLayout></ProtectedRoute>
