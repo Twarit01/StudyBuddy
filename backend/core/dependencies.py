@@ -30,9 +30,17 @@ def get_current_user(
             detail="Token missing user info"
         )
 
+    try:
+        user_id = int(user_id)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has invalid user info"
+        )
+
     # Import here to avoid circular imports
     from models.user import User
-    user = db.query(User).filter(User.id == int(user_id)).first()
+    user = db.query(User).filter(User.id == user_id).first()
     
     if user is None:
         raise HTTPException(
