@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 import { getQuizHistory } from '../api/quiz'
 import { getFlashcardStats } from '../api/flashcards'
 import { listDocuments } from '../api/documents'
 import { getStudyPlan } from '../api/progress'
+import { getReadingStats } from '../api/reader'
 import {
   ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar,
   LineChart, Line
@@ -12,53 +14,86 @@ import {
 
 const localDateKey = (date) => {
   const d = new Date(date)
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+}
+
+const ACHIEVEMENTS = [
+  { id:'first_steps',   icon:'🎯', label:'First Steps',    xp:50,  desc:'Ask your first question',   locked:false },
+  { id:'speed_reader',  icon:'📚', label:'Speed Reader',   xp:100, desc:'Upload 3 documents',         locked:false },
+  { id:'night_owl',     icon:'🦉', label:'Night Owl',      xp:75,  desc:'Study after 10 PM',          locked:false },
+  { id:'perfect_score', icon:'⭐', label:'Perfect Score',  xp:200, desc:'Score 100% on a quiz',       locked:false },
+  { id:'streak_master', icon:'🔥', label:'Streak Master',  xp:150, desc:'7 day streak',               locked:false },
+  { id:'ai_whisperer',  icon:'🤖', label:'AI Whisperer',   xp:100, desc:'50 chat messages',           locked:true  },
+  { id:'knowledge_god', icon:'👑', label:'Knowledge God',  xp:500, desc:'Master all subjects',        locked:true  },
+  { id:'marathon',      icon:'🏃', label:'Marathon',       xp:300, desc:'Study 10h in a week',        locked:true  },
+]
+
+function CircularProgress({ pct, color, size = 40 }) {
+  const r = (size - 6) / 2
+  const circ = 2 * Math.PI * r
+  const dash = (pct / 100) * circ
+  return (
+    <svg width={size} height={size} style={{ transform:'rotate(-90deg)', flexShrink:0 }}>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke= "var(--db-border-light)" strokeWidth={4}/>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={4}
+        strokeLinecap="round" strokeDasharray={`${dash} ${circ}`}
+        style={{ transition:'stroke-dasharray 0.6s ease' }}/>
+    </svg>
+  )
 }
 
 export default function Dashboard() {
   const { user } = useAuth()
-  const navigate = useNavigate()
+  const { isDark } = useTheme()
+  const navigate  = useNavigate()
 
-  const [stats, setStats]           = useState({ quizzes: 0, avgScore: 0, flashcards: 0, dueToday: 0, docs: 0 })
-  const [topicStats, setTopicStats] = useState([])
-  const [recentDocs, setRecentDocs] = useState([])
-  const [lastDoc, setLastDoc]       = useState(null)
-  const [streak, setStreak]         = useState(0)
-  const [streakDays, setStreakDays] = useState([])
-  const [weakTopics, setWeakTopics] = useState([])
-  const [scoreTrend, setScoreTrend] = useState([])
-  const [loading, setLoading]       = useState(true)
-  const [error, setError]           = useState(null)
-  const [chatInput, setChatInput]   = useState('')
-  const [planItems, setPlanItems]   = useState([])
+  const [stats, setStats]             = useState({ quizzes:0, avgScore:0, flashcards:0, dueToday:0, docs:0 })
+  const [topicStats, setTopicStats]   = useState([])
+  const [recentDocs, setRecentDocs]   = useState([])
+  const [lastDoc, setLastDoc]         = useState(null)
+  const [continueReading, setContinueReading] = useState(null)
+  const [streak, setStreak]           = useState(0)
+  const [streakDays, setStreakDays]   = useState([])
+  const [weakTopics, setWeakTopics]   = useState([])
+  const [scoreTrend, setScoreTrend]   = useState([])
+  const [loading, setLoading]         = useState(true)
+  const [error, setError]             = useState(null)
+  const [chatInput, setChatInput]     = useState('')
+  const [planItems, setPlanItems]     = useState([])
   const [planLoading, setPlanLoading] = useState(false)
+  const [dailyGoals, setDailyGoals]   = useState([
+    { id:1, label:'Study 2 hours',           done:true  },
+    { id:2, label:'Complete 1 quiz',         done:false },
+    { id:3, label:'Review 20 flashcards',    done:true  },
+    { id:4, label:'Read 1 document section', done:false },
+  ])
+
+  const hr       = new Date().getHours()
+  const greeting = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening'
+  const todayStr = new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' })
 
   useEffect(() => {
     const fetchAll = async () => {
       setError(null)
       try {
-        const [quizHistory, fcStats, docs] = await Promise.all([
-          getQuizHistory(), getFlashcardStats(), listDocuments()
+        const [quizHistory, fcStats, docs, readingStats] = await Promise.all([
+          getQuizHistory(), getFlashcardStats(), listDocuments(), getReadingStats()
         ])
 
         const avgScore = quizHistory.length
-          ? Math.round(quizHistory.reduce((a, b) => a + b.score_percentage, 0) / quizHistory.length)
-          : 0
+          ? Math.round(quizHistory.reduce((a,b) => a + b.score_percentage, 0) / quizHistory.length) : 0
 
         const topicMap = {}
-        quizHistory.forEach((a) => {
+        quizHistory.forEach(a => {
           const t = a.topic || 'General'
-          if (!topicMap[t]) topicMap[t] = { correct: 0, total: 0 }
+          if (!topicMap[t]) topicMap[t] = { correct:0, total:0 }
           topicMap[t].total   += a.total_questions
           topicMap[t].correct += a.correct_answers
         })
         const allTopics = Object.entries(topicMap)
-          .map(([topic, s]) => ({ topic, accuracy: Math.round((s.correct / s.total) * 100) }))
-        const topics = [...allTopics].sort((a, b) => b.accuracy - a.accuracy).slice(0, 5)
-        const weak = [...allTopics].sort((a, b) => a.accuracy - b.accuracy).slice(0, 3)
+          .map(([topic,s]) => ({ topic, accuracy: Math.round((s.correct/s.total)*100) }))
+        const topics = [...allTopics].sort((a,b) => b.accuracy - a.accuracy).slice(0,5)
+        const weak   = [...allTopics].sort((a,b) => a.accuracy - b.accuracy).slice(0,3)
 
         const activity = {}
         quizHistory.forEach(a => { activity[localDateKey(a.created_at)] = true })
@@ -66,364 +101,532 @@ export default function Dashboard() {
         const today = new Date()
         for (let i = 0; i < 365; i++) {
           const d = new Date(today); d.setDate(d.getDate() - i)
-          const key = localDateKey(d)
-          if (activity[key]) s++; else if (i > 0) break
+          if (activity[localDateKey(d)]) s++; else if (i > 0) break
         }
 
-        const dayLabels = ['M','T','W','T','F','S','S']
-        const weekStart = new Date(today)
-        const dayOfWeek = (today.getDay() + 6) % 7
-        weekStart.setDate(today.getDate() - dayOfWeek)
+        const dayLabels  = ['M','T','W','T','F','S','S']
+        const weekStart  = new Date(today)
+        const dow        = (today.getDay() + 6) % 7
+        weekStart.setDate(today.getDate() - dow)
         const week = dayLabels.map((label, i) => {
           const d = new Date(weekStart); d.setDate(weekStart.getDate() + i)
-          const key = localDateKey(d)
-          return { label, filled: !!activity[key], isToday: key === localDateKey(today) }
+          return { label, filled:!!activity[localDateKey(d)], isToday: localDateKey(d) === localDateKey(today) }
         })
 
-        const trend = quizHistory
-          .slice()
-          .reverse()
-          .slice(-8)
-          .map((a, i) => ({ i, score: Math.round(a.score_percentage) }))
+        const trend = quizHistory.slice().reverse().slice(-8)
+          .map((a,i) => ({ i, score: Math.round(a.score_percentage) }))
 
-        setStats({ quizzes: quizHistory.length, avgScore, flashcards: fcStats.total || 0, dueToday: fcStats.due_today || 0, docs: docs.length })
+        setStats({ quizzes:quizHistory.length, avgScore, flashcards:fcStats.total||0, dueToday:fcStats.due_today||0, docs:docs.length })
         setTopicStats(topics)
         setWeakTopics(weak)
-        setRecentDocs(docs.slice(0, 4))
+        setRecentDocs(docs.slice(0,4))
         setLastDoc(docs[0] || null)
+        setContinueReading(readingStats?.recent_documents?.[0] || null)
         setStreak(s)
         setStreakDays(week)
-        setScoreTrend(trend.length ? trend : [{ i: 0, score: 0 }])
-      } catch (err) { console.error(err); setError('Could not load your dashboard. Please refresh and try again.') }
-      finally { setLoading(false) }
+        setScoreTrend(trend.length ? trend : [{ i:0, score:0 }])
+      } catch (err) {
+        console.error(err)
+        setError('Could not load your dashboard. Please refresh and try again.')
+      } finally { setLoading(false) }
     }
     fetchAll()
   }, [])
 
-  const handleAsk = () => {
-    if (!chatInput.trim()) return
-    navigate('/chat', { state: { initialQuestion: chatInput } })
-  }
+  useEffect(() => { if (!loading) loadPlan() }, [loading])
 
-  const handleGeneratePlan = async () => {
+  const loadPlan = async () => {
     setPlanLoading(true)
     try {
       const data = await getStudyPlan()
       const items = []
-      const actions = {
-        flashcards: () => navigate('/flashcards', { state: { mode: 'due' } }),
-        mistakes: () => navigate('/revision'),
-        quiz: () => navigate('/quiz'),
-        explore: () => navigate('/documents'),
+      const nav = {
+        flashcards: () => navigate('/flashcards', { state:{ mode:'due' } }),
+        mistakes:   () => navigate('/revision'),
+        quiz:       () => navigate('/quiz'),
+        explore:    () => navigate('/documents'),
       }
       if (data.today_tasks?.length) {
-        data.today_tasks.slice(0, 3).forEach((task) => {
+        data.today_tasks.slice(0,3).forEach(task => {
+          const icons = { flashcards:'🃏', mistakes:'⚠️', quiz:'📝', explore:'📄' }
+          const tagColors = { high:'red', medium:'amber', low:'slate' }
           items.push({
-            icon: task.type === 'flashcards' ? 'ti-cards' : task.type === 'mistakes' ? 'ti-alert-circle' : 'ti-pencil',
+            icon: icons[task.type] || '✨',
             label: task.title,
             tag: `${task.minutes} min`,
-            tagColor: task.priority === 'high' ? 'red' : task.priority === 'medium' ? 'amber' : 'slate',
-            action: actions[task.type] || (() => navigate('/revision')),
+            tagColor: tagColors[task.priority] || 'slate',
+            action: nav[task.type] || (() => navigate('/revision')),
           })
         })
       }
-      if (items.length === 0) {
-        items.push({ icon: 'ti-sparkles', label: 'Start a smart revision session', tag: 'Get started', tagColor: 'indigo', action: () => navigate('/revision') })
-      }
+      if (!items.length) items.push({
+        icon:'✨', label:'Start a smart revision session', tag:'Get started',
+        tagColor:'indigo', action:() => navigate('/revision')
+      })
       setPlanItems(items)
-    } catch (err) {
-      console.error(err)
-      setPlanItems([{ icon: 'ti-alert-circle', label: 'Study plan is unavailable right now', tag: 'Try later', tagColor: 'red', action: () => {} }])
-    }
-    finally { setPlanLoading(false) }
+    } catch {
+      setPlanItems([{ icon:'⚠️', label:'Study plan unavailable right now', tag:'Try later', tagColor:'red', action:()=>{} }])
+    } finally { setPlanLoading(false) }
   }
 
-  useEffect(() => { if (!loading) handleGeneratePlan() }, [loading])
+  const handleAsk = () => {
+    if (!chatInput.trim()) return
+    navigate('/chat', { state:{ initialQuestion: chatInput } })
+  }
 
-  const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 17 ? 'Good afternoon' : 'Good evening'
+  const toggleGoal = (id) => setDailyGoals(prev => prev.map(g => g.id===id ? {...g, done:!g.done} : g))
+  const doneGoals  = dailyGoals.filter(g => g.done).length
+  const goalPct    = Math.round((doneGoals / dailyGoals.length) * 100)
 
-  const tagColors = {
-    red:    { bg: '#FEF2F2', darkBg: 'rgba(239,68,68,0.18)', text: '#DC2626', darkText: '#FCA5A5' },
-    amber:  { bg: '#FFFBEB', darkBg: 'rgba(245,158,11,0.18)', text: '#D97706', darkText: '#FCD34D' },
-    slate:  { bg: '#F1F5F9', darkBg: 'rgba(148,163,184,0.18)', text: '#64748B', darkText: '#CBD5E1' },
-    indigo: { bg: '#EEF2FF', darkBg: 'rgba(99,102,241,0.18)', text: '#4F46E5', darkText: '#A5B4FC' },
+  const LEVEL_COLORS = ['#F59E0B','#22D3EE','#8B5CF6','#10B981','#EC4899','#3B82F6']
+  const LEVELS       = ['Beginner','Intermediate','Advanced','Expert','Intermediate','Expert']
+  const subjectCards = topicStats.slice(0,6).map((t,i) => ({
+    ...t, color: LEVEL_COLORS[i % LEVEL_COLORS.length], level: LEVELS[i % LEVELS.length]
+  }))
+
+  const recommendations = [
+    weakTopics[0] && {
+      icon:'🎯', color:'#2D1B4E', border:'#7C3AED',
+      title:'Weak Area Detected',
+      body:`You score ${weakTopics[0].accuracy}% on ${weakTopics[0].topic}. Review before your next quiz.`,
+      cta:'Start Review →', action:()=>navigate('/quiz')
+    },
+    stats.dueToday > 0 && {
+      icon:'🃏', color:'#1A2D1A', border:'#16A34A',
+      title:`${stats.dueToday} Cards Due`,
+      body:'Spaced repetition review is due now. Best to tackle them while still fresh.',
+      cta:'Review Now →', action:()=>navigate('/flashcards',{state:{mode:'due'}})
+    },
+    {
+      icon:'⏰', color:'#1A1A2D', border:'#3B82F6',
+      title:'Prime Study Window',
+      body:'Your quiz scores are higher in the morning. Schedule your toughest topics now.',
+      cta:'Take a Quiz →', action:()=>navigate('/quiz')
+    },
+    stats.docs > 0 && {
+      icon:'🏆', color:'#1A2D1A', border:'#10B981',
+      title:'Almost Expert',
+      body:`You have ${stats.docs} document${stats.docs!==1?'s':''} uploaded. Keep studying!`,
+      cta:'Continue →', action:()=>navigate('/documents')
+    },
+  ].filter(Boolean).slice(0,4)
+
+  const tagColorMap = {
+    red:    { bg:'rgba(239,68,68,0.18)',    text:'#FCA5A5' },
+    amber:  { bg:'rgba(245,158,11,0.18)',   text:'#FCD34D' },
+    slate:  { bg:'rgba(148,163,184,0.18)',  text:'#CBD5E1' },
+    indigo: { bg:'rgba(99,102,241,0.18)',   text:'#A5B4FC' },
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-[#F8FAFC] dark:bg-[#0B0F1A] transition-colors duration-200">
-      <div className="flex flex-col xl:flex-row">
+    <div style={{
+      height: '100%',
+      overflowY: 'auto',
+      background: isDark ? '#0C0C14' : '#F8FAFC',
+      color: isDark ? '#fff' : '#0F172A',
+      fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',
+      '--db-bg': isDark ? '#0C0C14' : '#F8FAFC',
+      '--db-text': isDark ? '#fff' : '#0F172A',
+      '--db-card-bg': isDark ? '#13131F' : '#ffffff',
+      '--db-card-border': isDark ? 'rgba(255,255,255,0.07)' : '#E2E8F0',
+      '--db-border': isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0',
+      '--db-border-light': isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0',
+      '--db-text-muted': isDark ? 'rgba(255,255,255,0.38)' : '#64748B',
+      '--db-text-sub': isDark ? 'rgba(255,255,255,0.42)' : '#475569',
+      '--db-text-light': isDark ? 'rgba(255,255,255,0.75)' : '#334155',
+      '--db-hover-bg': isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9',
+      '--db-inner-bg': isDark ? '#1A1A28' : '#ffffff',
+      '--db-ach-bg': isDark ? '#1A1A28' : '#ffffff',
+      '--db-input-bg': isDark ? '#13131F' : '#ffffff',
+    }}>
+      <style>{`
+        .db-card { background: var(--db-card-bg); border: 1px solid var(--db-card-border); border-radius: 16px; }
+        .db-btn  { display:inline-flex; align-items:center; gap:6px; padding:7px 16px; border-radius:10px;
+                   font-size:12px; font-weight:600; cursor:pointer; border:none; transition:all 0.2s; }
+        .db-btn-ghost  { background: var(--db-hover-bg); color: var(--db-text-sub); }
+        .db-btn-ghost:hover  { background: var(--db-border); color: var(--db-text); }
+        .db-btn-primary { background:linear-gradient(135deg,#7C3AED,#6D28D9); color:#fff; }
+        .db-btn-primary:hover { background:linear-gradient(135deg,#8B5CF6,#7C3AED); }
+        .goal-check { width:20px; height:20px; border-radius:50%; border:2px solid var(--db-border);
+                      display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; transition:all 0.2s; }
+        .goal-check.done { background:#10B981; border-color:#10B981; }
+        .rec-card { border-radius:14px; padding:16px; cursor:pointer; transition:all 0.2s; border:1px solid; }
+        .rec-card:hover { transform:translateY(-2px); filter:brightness(1.1); }
+        .subject-card { border-radius:12px; padding:14px; cursor:pointer; transition:all 0.15s;
+                        background: var(--db-inner-bg); border:1px solid var(--db-card-border); }
+        .subject-card:hover { border-color: var(--db-border); background: var(--db-hover-bg); }
+        .ach-card { border-radius:12px; padding:12px; text-align:center; background: var(--db-ach-bg);
+                    border:1px solid var(--db-card-border); transition:all 0.15s; cursor:default; }
+        .ach-card.locked { opacity:0.4; filter:grayscale(1); }
+        .doc-row { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:10px;
+                   cursor:pointer; transition:background 0.15s; }
+        .doc-row:hover { background: var(--db-hover-bg); }
+        .plan-row { display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:10px;
+                    cursor:pointer; transition:background 0.15s; background:transparent; border:none; width:100%; text-align:left; }
+        .plan-row:hover { background: var(--db-hover-bg); }
+        .rem-row { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px;
+                   cursor:pointer; transition:background 0.15s; }
+        .rem-row:hover { background: var(--db-hover-bg); }
+        .xp-text { background:linear-gradient(135deg,#F59E0B,#EF4444);
+                   -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+        @keyframes spin { to { transform:rotate(360deg) } }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:none } }
+        .fade-in { animation: fadeIn 0.3s ease; }
+      `}</style>
 
-        {/* MAIN COLUMN */}
-        <div className="flex-1 px-4 sm:px-8 py-6 sm:py-8 max-w-5xl mx-auto w-full">
-
-          {/* Header */}
-          <div className="flex items-start justify-between mb-6">
-            <div>
-              <h1 className="text-display text-[#0F172A] dark:text-[#F1F5F9]">
-                {greeting}, {user?.full_name?.split(' ')[0]} 👋
-              </h1>
-              <p className="text-body mt-1 text-[#64748B] dark:text-[#94A3B8]">
-                You're <span className="font-semibold text-indigo-600 dark:text-indigo-400">{stats.avgScore}%</span> ready for your next exam. Let's keep the momentum going!
-              </p>
-            </div>
-          </div>
-
-          {/* Ask box */}
-          <div className="p-1 mb-6 rounded-2xl border bg-white dark:bg-[#141B2D] border-[#E2E8F0] dark:border-[#1F2937] shadow-md">
-            <div className="flex items-center gap-3 px-4 py-3">
-              <i className="ti ti-sparkles" style={{ fontSize: 20, color: '#6366F1' }} aria-hidden="true"></i>
-              <input
-                type="text" value={chatInput}
-                onChange={e => setChatInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAsk()}
-                placeholder="Ask anything about your documents, topics, or concepts..."
-                className="flex-1 bg-transparent text-sm outline-none text-[#0F172A] dark:text-[#F1F5F9] placeholder-[#94A3B8]"
-              />
-              <button onClick={handleAsk} className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors"
-                style={{ background: 'linear-gradient(135deg, #6366F1, #4F46E5)' }}>
-                <i className="ti ti-arrow-right text-white" style={{ fontSize: 16 }} aria-hidden="true"></i>
-              </button>
-            </div>
-          </div>
-
-          {loading ? (
-            <div className="flex justify-center py-20">
-              <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : error ? (
-            <div className="px-4 py-3 rounded-xl text-sm bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-500/30">
-              {error}
-            </div>
-          ) : (
-            <>
-              {/* Continue learning + Study plan */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-
-                {/* Continue learning */}
-                <div className="p-6 rounded-2xl border shadow-sm relative overflow-hidden bg-white dark:bg-[#141B2D]"
-                  style={{ borderColor: 'rgba(99,102,241,0.25)' }}>
-                  <div className="absolute inset-0 pointer-events-none"
-                    style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.06), rgba(34,211,238,0.04))' }} />
-                  <div className="relative">
-                    <p className="text-label mb-4 text-indigo-500 dark:text-indigo-300">Continue learning</p>
-                    {lastDoc ? (
-                      <>
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-indigo-600">
-                            <i className="ti ti-folder text-white" style={{ fontSize: 20 }} aria-hidden="true"></i>
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-[#0F172A] dark:text-[#F1F5F9] truncate">{lastDoc.original_name}</p>
-                            <p className="text-xs text-[#94A3B8]">Uploaded recently</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3 mb-5">
-                          <div className="flex-1 progress-bar">
-                            <div className="progress-fill progress-fill-indigo" style={{ width: `${lastDoc.chunk_count ? 82 : 0}%` }} />
-                          </div>
-                          <span className="text-xs font-semibold text-[#0F172A] dark:text-[#F1F5F9] flex-shrink-0">{lastDoc.chunk_count ? '82%' : '0%'}</span>
-                        </div>
-                        <button onClick={() => navigate('/documents')} className="btn-primary text-sm">
-                          Continue
-                          <i className="ti ti-arrow-right" style={{ fontSize: 15 }} aria-hidden="true"></i>
-                        </button>
-                      </>
-                    ) : (
-                      <div className="flex flex-col items-start">
-                        <p className="text-sm font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">No documents yet</p>
-                        <p className="text-xs text-[#94A3B8] mb-4">Upload your first study material to get started</p>
-                        <button onClick={() => navigate('/documents')} className="btn-primary text-sm">
-                          <i className="ti ti-upload" style={{ fontSize: 15 }} aria-hidden="true"></i>
-                          Upload document
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* AI Study Plan */}
-                <div className="p-6 rounded-2xl border bg-white dark:bg-[#141B2D] border-[#E2E8F0] dark:border-[#1F2937] shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-title text-[#0F172A] dark:text-[#F1F5F9]">AI Study Plan</h2>
-                    <span className="badge badge-cyan">Recommended</span>
-                  </div>
-                  {planLoading ? (
-                    <div className="flex justify-center py-6">
-                      <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-2 mb-4">
-                      {planItems.map((item, i) => {
-                        const tc = tagColors[item.tagColor]
-                        return (
-                          <button key={i} onClick={item.action}
-                            className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-[#0B0F1A] transition-colors text-left">
-                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold flex-shrink-0 bg-slate-100 dark:bg-[#1F2937] text-slate-600 dark:text-slate-300">
-                              {i + 1}
-                            </div>
-                            <span className="text-sm text-[#374151] dark:text-[#CBD5E1] flex-1">{item.label}</span>
-                            <span className="text-[10px] font-medium px-2 py-1 rounded-full flex-shrink-0 dark:hidden"
-                              style={{ background: tc.bg, color: tc.text }}>
-                              {item.tag}
-                            </span>
-                            <span className="text-[10px] font-medium px-2 py-1 rounded-full flex-shrink-0 hidden dark:inline-block"
-                              style={{ background: tc.darkBg, color: tc.darkText }}>
-                              {item.tag}
-                            </span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
-                  <button onClick={() => navigate('/revision')} className="text-xs font-medium text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1">
-                    Start smart revision
-                    <i className="ti ti-arrow-right" style={{ fontSize: 12 }} aria-hidden="true"></i>
-                  </button>
-                </div>
-              </div>
-
-              {/* Stat row */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-                {[
-                  { icon: 'ti-folder',  color: '#6366F1', bg: '#EEF2FF', darkBg: 'rgba(99,102,241,0.18)',  value: stats.avgScore + '%', label: 'Study Score',       sub: 'Good progress' },
-                  { icon: 'ti-flame',   color: '#F59E0B', bg: '#FFFBEB', darkBg: 'rgba(245,158,11,0.18)',  value: streak,               label: 'Current Streak',   sub: 'Keep it up!', suffix: ' days' },
-                  { icon: 'ti-cards',   color: '#10B981', bg: '#ECFDF5', darkBg: 'rgba(16,185,129,0.18)',  value: stats.dueToday,       label: 'Flashcards Due',   sub: 'Ready to review' },
-                  { icon: 'ti-pencil',  color: '#8B5CF6', bg: '#F5F3FF', darkBg: 'rgba(139,92,246,0.18)',  value: stats.quizzes,        label: 'Quizzes Completed',sub: 'This week' },
-                ].map(s => (
-                  <div key={s.label} className="p-4 rounded-2xl border bg-white dark:bg-[#141B2D] border-[#E2E8F0] dark:border-[#1F2937] shadow-sm">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[var(--icon-bg-light)] dark:bg-[var(--icon-bg-dark)]"
-                        style={{ '--icon-bg-light': s.bg, '--icon-bg-dark': s.darkBg }}>
-                        <i className={`ti ${s.icon}`} style={{ fontSize: 17, color: s.color }} aria-hidden="true"></i>
-                      </div>
-                    </div>
-                    <div className="text-xl font-semibold text-[#0F172A] dark:text-[#F1F5F9]" style={{ letterSpacing: '-0.4px' }}>
-                      {s.value}{s.suffix || ''}
-                    </div>
-                    <div className="text-xs text-[#94A3B8] mt-0.5">{s.label}</div>
-                    <div className="text-[10px] mt-1" style={{ color: s.color }}>{s.sub}</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Topic progress + Recent docs */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-
-                {/* Topic progress with radar */}
-                <div className="p-6 rounded-2xl border bg-white dark:bg-[#141B2D] border-[#E2E8F0] dark:border-[#1F2937] shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-title text-[#0F172A] dark:text-[#F1F5F9]">Topic Progress</h2>
-                    <button onClick={() => navigate('/progress')} className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline">View all</button>
-                  </div>
-
-                  {topicStats.length === 0 ? (
-                    <div className="flex flex-col items-center py-10 text-center">
-                      <i className="ti ti-chart-bar" style={{ fontSize: 28, color: '#CBD5E1' }} aria-hidden="true"></i>
-                      <p className="text-sm font-medium text-[#0F172A] dark:text-[#F1F5F9] mt-3">No quiz data yet</p>
-                      <p className="text-xs text-[#94A3B8] mt-1">Take a quiz to see your topic breakdown</p>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                      <div className="w-32 h-32 flex-shrink-0">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <RadarChart data={topicStats} outerRadius="75%">
-                            <PolarGrid stroke="#E2E8F0" />
-                            <PolarAngleAxis dataKey="topic" tick={{ fontSize: 0 }} />
-                            <Radar dataKey="accuracy" stroke="#6366F1" fill="#6366F1" fillOpacity={0.25} />
-                          </RadarChart>
-                        </ResponsiveContainer>
-                      </div>
-                      <div className="flex-1 flex flex-col gap-2.5">
-                        {topicStats.map(t => (
-                          <div key={t.topic}>
-                            <div className="flex justify-between text-xs mb-1">
-                              <span className="font-medium text-[#374151] dark:text-[#CBD5E1] truncate">{t.topic}</span>
-                              <span className="font-semibold text-[#0F172A] dark:text-[#F1F5F9] flex-shrink-0 ml-2">{t.accuracy}%</span>
-                            </div>
-                            <div className="progress-bar" style={{ height: 5 }}>
-                              <div className="progress-fill progress-fill-indigo" style={{ width: `${t.accuracy}%` }} />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Recent documents */}
-                <div className="p-6 rounded-2xl border bg-white dark:bg-[#141B2D] border-[#E2E8F0] dark:border-[#1F2937] shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-title text-[#0F172A] dark:text-[#F1F5F9]">Recent Documents</h2>
-                    <button onClick={() => navigate('/documents')} className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline">View all</button>
-                  </div>
-                  {recentDocs.length === 0 ? (
-                    <div className="flex flex-col items-center py-10 text-center">
-                      <i className="ti ti-file-off" style={{ fontSize: 28, color: '#CBD5E1' }} aria-hidden="true"></i>
-                      <p className="text-sm font-medium text-[#0F172A] dark:text-[#F1F5F9] mt-3">No documents yet</p>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-1">
-                      {recentDocs.map(doc => (
-                        <div key={doc.id} onClick={() => navigate('/documents')}
-                          className="flex items-center gap-3 px-2 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-[#0B0F1A] transition-colors cursor-pointer group">
-                          <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                            style={{ background: doc.file_type === 'pdf' ? 'rgba(239,68,68,0.12)' : 'rgba(59,130,246,0.12)' }}>
-                            <i className="ti ti-file-text" style={{ fontSize: 16, color: doc.file_type === 'pdf' ? '#EF4444' : '#3B82F6' }} aria-hidden="true"></i>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-[#0F172A] dark:text-[#E2E8F0] truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                              {doc.original_name}
-                            </div>
-                            <div className="text-[11px] text-[#94A3B8]">
-                              {(doc.file_size / 1024).toFixed(0)} KB · {doc.chunk_count} chunks
-                            </div>
-                          </div>
-                          <i className="ti ti-dots-vertical opacity-0 group-hover:opacity-100 transition-opacity" style={{ fontSize: 14, color: '#94A3B8' }} aria-hidden="true"></i>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
+      {/* Header */}
+      <div style={{ padding:'28px 28px 0', display:'flex', alignItems:'flex-start',
+        justifyContent:'space-between', flexWrap:'wrap', gap:14 }}>
+        <div>
+          <div style={{ fontSize:11, color: 'var(--db-text-muted)', marginBottom:4 }}>{todayStr}</div>
+          <h1 style={{ fontSize:30, fontWeight:700, margin:0, letterSpacing:'-0.5px' }}>
+            {greeting}, {user?.full_name?.split(' ')[0]} 👋
+          </h1>
+          <p style={{ color: 'var(--db-text-sub)', fontSize:13, margin:'5px 0 0' }}>
+            {stats.avgScore > 0
+              ? `You're ${stats.avgScore}% ready for your next exam — keep the momentum going!`
+              : "Ready to study? Let's go!"}
+          </p>
         </div>
+        <div style={{ display:'flex', gap:10, flexShrink:0 }}>
+          <div className="db-card" style={{ padding:'10px 18px', display:'flex', alignItems:'center', gap:10 }}>
+            <span style={{ fontSize:20 }}>🔥</span>
+            <div>
+              <div style={{ fontSize:20, fontWeight:800, lineHeight:1 }}>{streak}</div>
+              <div style={{ fontSize:10, color: 'var(--db-text-muted)', marginTop:2 }}>day streak</div>
+            </div>
+          </div>
+          <div className="db-card" style={{ padding:'10px 18px', display:'flex', alignItems:'center', gap:10 }}>
+            <span style={{ fontSize:18 }}>⚡</span>
+            <div>
+              <div style={{ fontSize:20, fontWeight:800, lineHeight:1 }} className="xp-text">
+                {(stats.quizzes * 50 + stats.dueToday * 10 + stats.docs * 30).toLocaleString()}
+              </div>
+              <div style={{ fontSize:10, color: 'var(--db-text-muted)', marginTop:2 }}>total XP</div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-        {/* RIGHT RAIL */}
-        {!loading && (
-          <div className="w-full xl:w-72 flex-shrink-0 px-4 sm:px-5 py-6 xl:py-8 flex flex-col gap-4 border-t xl:border-t-0 xl:border-l border-[#F1F5F9] dark:border-[#1F2937]">
+      {/* Ask-anything bar */}
+      <div style={{ margin:'20px 28px 0' }}>
+        <div style={{ background:'var(--db-card-bg)', border:'1px solid var(--db-border)', borderRadius:14,
+          display:'flex', alignItems:'center', gap:10, padding:'12px 16px' }}>
+          <span style={{ fontSize:18, flexShrink:0 }}>✨</span>
+          <input
+            type="text" value={chatInput}
+            onChange={e => setChatInput(e.target.value)}
+            onKeyDown={e => e.key==='Enter' && handleAsk()}
+            placeholder="Ask anything about your documents, topics, or concepts..."
+            style={{ flex:1, background:'transparent', border:'none', outline:'none',
+              color:'var(--db-text)', fontSize:13, fontFamily:'inherit' }}
+          />
+          <button onClick={handleAsk}
+            style={{ width:34, height:34, borderRadius:10, border:'none',
+              background:'linear-gradient(135deg,#7C3AED,#6D28D9)',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              cursor:'pointer', flexShrink:0, fontSize:16, color:'var(--db-text)' }}>
+            →
+          </button>
+        </div>
+      </div>
 
-            {/* Study score gauge */}
-            <div className="p-5 rounded-2xl border bg-white dark:bg-[#141B2D] border-[#E2E8F0] dark:border-[#1F2937] shadow-sm">
-              <p className="text-title text-[#0F172A] dark:text-[#F1F5F9] mb-3">Study Score</p>
-              <div className="flex flex-col items-center">
-                <div className="relative w-28 h-28">
-                  <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                    <circle cx="50" cy="50" r="42" fill="none" stroke="#F1F5F9" strokeWidth="9" className="dark:opacity-10" />
-                    <circle
-                      cx="50" cy="50" r="42" fill="none"
-                      stroke="url(#scoreGradient)" strokeWidth="9" strokeLinecap="round"
-                      strokeDasharray={`${(stats.avgScore / 100) * 264} 264`}
-                    />
+      {loading ? (
+        <div style={{ display:'flex', justifyContent:'center', padding:80 }}>
+          <div style={{ width:30, height:30, border:'3px solid #7C3AED',
+            borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
+        </div>
+      ) : error ? (
+        <div style={{ margin:'20px 28px', padding:'14px 18px',
+          background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)',
+          borderRadius:12, color:'#FCA5A5', fontSize:13 }}>{error}</div>
+      ) : (
+        <div className="fade-in" style={{ padding:'20px 28px',
+          display:'grid', gridTemplateColumns:'1fr 308px', gap:20 }}>
+
+          {/* LEFT COLUMN */}
+          <div style={{ display:'flex', flexDirection:'column', gap:18, minWidth:0 }}>
+
+            {/* Continue Learning + Study Plan */}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+              <div className="db-card" style={{ padding:20, position:'relative', overflow:'hidden' }}>
+                <div style={{ position:'absolute', inset:0, pointerEvents:'none',
+                  background:'linear-gradient(135deg,rgba(124,58,237,0.08),rgba(34,211,238,0.04))' }}/>
+                <div style={{ position:'relative' }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:'#7C3AED', letterSpacing:1,
+                    marginBottom:12, textTransform:'uppercase' }}>Continue learning</div>
+                  {continueReading || lastDoc ? (
+                    <>
+                      <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
+                        <div style={{ width:38, height:38, borderRadius:10, background:'rgba(124,58,237,0.2)',
+                          display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>📖</div>
+                        <div style={{ minWidth:0 }}>
+                          <div style={{ fontSize:13, fontWeight:600, overflow:'hidden',
+                            textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                            {continueReading?.document_name || lastDoc.original_name}
+                          </div>
+                          <div style={{ fontSize:11, color: 'var(--db-text-muted)' }}>
+                            {continueReading
+                              ? `Page ${continueReading.last_page} · ${Math.round(continueReading.percent)}% read`
+                              : 'Uploaded recently'}
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ height:4, background: 'var(--db-border-light)', borderRadius:4,
+                        marginBottom:14, overflow:'hidden' }}>
+                        <div style={{ height:'100%',
+                          width: `${continueReading?.percent ?? (lastDoc?.chunk_count ? 82 : 0)}%`,
+                          background:'linear-gradient(90deg,#7C3AED,#22D3EE)', borderRadius:4 }}/>
+                      </div>
+                      <button className="db-btn db-btn-primary" onClick={() => {
+                        const docId = continueReading?.document_id || lastDoc?.id
+                        navigate(`/reader/${docId}`, {
+                          state: { page: continueReading?.last_page || 1 },
+                        })
+                      }}>
+                        Continue reading →
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>No documents yet</div>
+                      <div style={{ fontSize:11, color: 'var(--db-text-muted)', marginBottom:14 }}>
+                        Upload your first study material to get started
+                      </div>
+                      <button className="db-btn db-btn-primary" onClick={()=>navigate('/documents')}>
+                        📤 Upload document
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="db-card" style={{ padding:20 }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+                  <h2 style={{ margin:0, fontSize:14, fontWeight:700 }}>AI Study Plan</h2>
+                  <span style={{ fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:20,
+                    background:'rgba(34,211,238,0.15)', color:'#22D3EE' }}>Recommended</span>
+                </div>
+                {planLoading ? (
+                  <div style={{ display:'flex', justifyContent:'center', padding:20 }}>
+                    <div style={{ width:20, height:20, border:'2px solid #7C3AED',
+                      borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
+                  </div>
+                ) : (
+                  <div style={{ display:'flex', flexDirection:'column', gap:4, marginBottom:12 }}>
+                    {planItems.map((item,i) => {
+                      const tc = tagColorMap[item.tagColor] || tagColorMap.slate
+                      return (
+                        <button key={i} onClick={item.action} className="plan-row">
+                          <div style={{ width:22, height:22, borderRadius:'50%', background: 'var(--db-border-light)',
+                            display:'flex', alignItems:'center', justifyContent:'center',
+                            fontSize:11, fontWeight:700, color: 'var(--db-text-sub)', flexShrink:0 }}>
+                            {i+1}
+                          </div>
+                          <span style={{ fontSize:12, color: 'var(--db-text-light)', flex:1 }}>{item.label}</span>
+                          <span style={{ fontSize:10, fontWeight:600, padding:'2px 7px', borderRadius:20,
+                            background:tc.bg, color:tc.text, flexShrink:0 }}>{item.tag}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+                <button onClick={()=>navigate('/revision')}
+                  style={{ fontSize:11, fontWeight:600, color:'#22D3EE', background:'none',
+                    border:'none', cursor:'pointer', padding:0, display:'flex', alignItems:'center', gap:4 }}>
+                  Start smart revision →
+                </button>
+              </div>
+            </div>
+
+            {/* Stat row */}
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12 }}>
+              {[
+                { icon:'⏱️', value: stats.avgScore ? `${stats.avgScore}%` : '—', label:'Study Score',     sub:'Good progress', color:'#8B5CF6' },
+                { icon:'📊', value: stats.quizzes,                               label:'Quizzes Done',     sub:'This session',  color:'#22D3EE' },
+                { icon:'🃏', value: stats.dueToday,                              label:'Flashcards Due',   sub:'Ready to review',color:'#10B981' },
+                { icon:'📄', value: stats.docs,                                  label:'Documents',        sub:'Uploaded',      color:'#F59E0B' },
+              ].map(s => (
+                <div key={s.label} className="db-card" style={{ padding:'16px 14px' }}>
+                  <div style={{ width:34, height:34, borderRadius:9,
+                    background:`${s.color}22`, display:'flex', alignItems:'center',
+                    justifyContent:'center', fontSize:16, marginBottom:10 }}>{s.icon}</div>
+                  <div style={{ fontSize:24, fontWeight:800, letterSpacing:'-0.5px' }}>{s.value}</div>
+                  <div style={{ fontSize:11, color: 'var(--db-text-muted)', marginTop:2 }}>{s.label}</div>
+                  <div style={{ fontSize:10, color:s.color, marginTop:3 }}>{s.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Topic Progress + Recent Docs */}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+              <div className="db-card" style={{ padding:20 }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+                  <h2 style={{ margin:0, fontSize:14, fontWeight:700 }}>Topic Progress</h2>
+                  <button className="db-btn db-btn-ghost" onClick={()=>navigate('/progress')}
+                    style={{ padding:'4px 10px', fontSize:11 }}>View all</button>
+                </div>
+                {topicStats.length === 0 ? (
+                  <div style={{ textAlign:'center', padding:'28px 0', color: 'var(--db-text-muted)' }}>
+                    <div style={{ fontSize:28, marginBottom:8 }}>📊</div>
+                    <p style={{ margin:0, fontSize:12 }}>Take a quiz to see your topic breakdown</p>
+                  </div>
+                ) : (
+                  <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                    <div style={{ height:110 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RadarChart data={topicStats} outerRadius="70%">
+                          <PolarGrid stroke= "var(--db-border-light)" />
+                          <PolarAngleAxis dataKey="topic" tick={{ fontSize:0 }} />
+                          <Radar dataKey="accuracy" stroke="#7C3AED" fill="#7C3AED" fillOpacity={0.2} />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    {topicStats.map(t => (
+                      <div key={t.topic}>
+                        <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4, fontSize:11 }}>
+                          <span style={{ color: 'var(--db-text-light)', overflow:'hidden',
+                            textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'70%' }}>{t.topic}</span>
+                          <span style={{ fontWeight:700, flexShrink:0 }}>{t.accuracy}%</span>
+                        </div>
+                        <div style={{ height:4, background: 'var(--db-border-light)', borderRadius:4, overflow:'hidden' }}>
+                          <div style={{ height:'100%', width:`${t.accuracy}%`,
+                            background:'linear-gradient(90deg,#7C3AED,#22D3EE)', borderRadius:4 }}/>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="db-card" style={{ padding:20 }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+                  <h2 style={{ margin:0, fontSize:14, fontWeight:700 }}>Recent Documents</h2>
+                  <button className="db-btn db-btn-ghost" onClick={()=>navigate('/documents')}
+                    style={{ padding:'4px 10px', fontSize:11 }}>View all</button>
+                </div>
+                {recentDocs.length === 0 ? (
+                  <div style={{ textAlign:'center', padding:'28px 0', color: 'var(--db-text-muted)' }}>
+                    <div style={{ fontSize:28, marginBottom:8 }}>📁</div>
+                    <p style={{ margin:0, fontSize:12 }}>No documents yet</p>
+                  </div>
+                ) : (
+                  <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+                    {recentDocs.map(doc => (
+                      <div key={doc.id} className="doc-row" onClick={()=>navigate(`/reader/${doc.id}`)}>
+                        <div style={{ width:34, height:34, borderRadius:9, flexShrink:0,
+                          display:'flex', alignItems:'center', justifyContent:'center', fontSize:16,
+                          background: doc.file_type==='pdf' ? 'rgba(239,68,68,0.15)' : 'rgba(59,130,246,0.15)' }}>📄</div>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontSize:12, fontWeight:600, overflow:'hidden',
+                            textOverflow:'ellipsis', whiteSpace:'nowrap',
+                            color: 'var(--db-text-light)' }}>{doc.original_name}</div>
+                          <div style={{ fontSize:10, color: 'var(--db-text-muted)', marginTop:2 }}>
+                            {(doc.file_size/1024).toFixed(0)} KB · {doc.chunk_count} chunks
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Subject Mastery */}
+            {subjectCards.length > 0 && (
+              <div className="db-card" style={{ padding:20 }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+                  <h2 style={{ margin:0, fontSize:14, fontWeight:700 }}>Subject Mastery</h2>
+                  <button className="db-btn db-btn-ghost" onClick={()=>navigate('/progress')}
+                    style={{ padding:'4px 10px', fontSize:11 }}>All subjects →</button>
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10 }}>
+                  {subjectCards.map(t => (
+                    <div key={t.topic} className="subject-card" onClick={()=>navigate('/quiz')}>
+                      <div style={{ fontSize:9, fontWeight:700, color:t.color, letterSpacing:1,
+                        marginBottom:3, textTransform:'uppercase' }}>{t.level}</div>
+                      <div style={{ fontSize:13, fontWeight:700, marginBottom:10,
+                        overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.topic}</div>
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                        <div style={{ display:'flex', gap:2 }}>
+                          {[...Array(4)].map((_,j) => (
+                            <div key={j} style={{ width:18, height:3, borderRadius:2,
+                              background: j < Math.round((t.accuracy/100)*4) ? t.color :  'var(--db-border)' }}/>
+                          ))}
+                        </div>
+                        <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                          <CircularProgress pct={t.accuracy} color={t.color} size={36}/>
+                          <span style={{ fontSize:12, fontWeight:700, color:t.color }}>{t.accuracy}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* AI Recommendations */}
+            <div className="db-card" style={{ padding:20 }}>
+              <h2 style={{ margin:'0 0 14px', fontSize:14, fontWeight:700 }}>✨ AI Recommendations</h2>
+              {recommendations.length === 0 ? (
+                <div style={{ textAlign:'center', padding:'20px 0', color: 'var(--db-text-muted)', fontSize:12 }}>
+                  Take a quiz to get personalised AI recommendations
+                </div>
+              ) : (
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                  {recommendations.map((r,i) => (
+                    <div key={i} className="rec-card" onClick={r.action}
+                      style={{ background:r.color, borderColor:r.border }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
+                        <div style={{ width:32, height:32, borderRadius:9, background: 'var(--db-border)',
+                          display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}>{r.icon}</div>
+                        <div style={{ fontSize:13, fontWeight:700 }}>{r.title}</div>
+                      </div>
+                      <p style={{ margin:'0 0 10px', fontSize:11, color: 'var(--db-text-sub)', lineHeight:1.5 }}>{r.body}</p>
+                      <div style={{ fontSize:11, fontWeight:700, color:r.border }}>{r.cta}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN */}
+          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+
+            {/* Study Score gauge */}
+            <div className="db-card" style={{ padding:18 }}>
+              <div style={{ fontSize:13, fontWeight:700, marginBottom:14 }}>Study Score</div>
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center' }}>
+                <div style={{ position:'relative', width:110, height:110 }}>
+                  <svg viewBox="0 0 100 100" style={{ width:'100%', height:'100%', transform:'rotate(-90deg)' }}>
+                    <circle cx="50" cy="50" r="42" fill="none" stroke= "var(--db-border-light)" strokeWidth={8}/>
+                    <circle cx="50" cy="50" r="42" fill="none" strokeWidth={8} strokeLinecap="round"
+                      stroke="url(#scoreGrad)"
+                      strokeDasharray={`${(stats.avgScore/100)*264} 264`}
+                      style={{ transition:'stroke-dasharray 0.6s ease' }}/>
                     <defs>
-                      <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#6366F1" />
-                        <stop offset="100%" stopColor="#22D3EE" />
+                      <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#7C3AED"/>
+                        <stop offset="100%" stopColor="#22D3EE"/>
                       </linearGradient>
                     </defs>
                   </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-2xl font-bold text-[#0F172A] dark:text-[#F1F5F9]" style={{ letterSpacing: '-0.5px' }}>{stats.avgScore}%</span>
+                  <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column',
+                    alignItems:'center', justifyContent:'center' }}>
+                    <span style={{ fontSize:22, fontWeight:800, letterSpacing:'-0.5px' }}>{stats.avgScore}%</span>
                   </div>
                 </div>
-                <p className="text-xs mt-2" style={{ color: stats.avgScore >= 70 ? '#10B981' : stats.avgScore >= 40 ? '#F59E0B' : '#EF4444' }}>
-                  {stats.avgScore >= 70 ? 'Good progress' : stats.avgScore >= 40 ? 'Keep going' : 'Needs work'}
+                <p style={{ margin:'8px 0 0', fontSize:12, fontWeight:600,
+                  color: stats.avgScore>=70 ? '#10B981' : stats.avgScore>=40 ? '#F59E0B' : '#EF4444' }}>
+                  {stats.avgScore>=70 ? 'Good progress' : stats.avgScore>=40 ? 'Keep going' : 'Needs work'}
                 </p>
                 {scoreTrend.length > 1 && (
-                  <div className="w-full h-10 mt-3">
+                  <div style={{ width:'100%', height:36, marginTop:10 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={scoreTrend}>
-                        <Line type="monotone" dataKey="score" stroke="#6366F1" strokeWidth={2} dot={{ r: 2, fill: '#6366F1' }} />
+                        <Line type="monotone" dataKey="score" stroke="#7C3AED"
+                          strokeWidth={2} dot={{ r:2, fill:'#7C3AED' }}/>
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -431,87 +634,144 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Streak */}
-            <div className="p-5 rounded-2xl border bg-white dark:bg-[#141B2D] border-[#E2E8F0] dark:border-[#1F2937] shadow-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <i className="ti ti-flame" style={{ fontSize: 16, color: '#F59E0B' }} aria-hidden="true"></i>
-                <p className="text-sm font-semibold text-[#0F172A] dark:text-[#F1F5F9]">{streak} day streak</p>
+            {/* Daily Goals */}
+            <div className="db-card" style={{ padding:18 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+                <div style={{ fontSize:13, fontWeight:700 }}>Daily Goals</div>
+                <span style={{ fontSize:11, color:'#10B981', fontWeight:700 }}>{goalPct}%</span>
               </div>
-              <p className="text-xs text-[#94A3B8] mb-3">Keep it up, {user?.full_name?.split(' ')[0]}!</p>
-              <div className="flex justify-between">
-                {streakDays.map((d, i) => (
-                  <div key={i} className="flex flex-col items-center gap-1.5">
-                    <div
-                      className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
-                      style={{
-                        background: d.filled ? 'linear-gradient(135deg, #6366F1, #4F46E5)' : 'transparent',
-                        border: d.filled ? 'none' : '1.5px solid #E2E8F0',
-                      }}
-                    >
-                      {d.isToday && !d.filled && <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />}
+              <div style={{ height:4, background: 'var(--db-border-light)', borderRadius:4,
+                marginBottom:12, overflow:'hidden' }}>
+                <div style={{ height:'100%', width:`${goalPct}%`,
+                  background:'linear-gradient(90deg,#7C3AED,#10B981)', borderRadius:4, transition:'width 0.5s' }}/>
+              </div>
+              <div style={{ fontSize:11, color: 'var(--db-text-muted)', marginBottom:10 }}>
+                {doneGoals} of {dailyGoals.length} complete
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:9 }}>
+                {dailyGoals.map(g => (
+                  <div key={g.id} onClick={()=>toggleGoal(g.id)}
+                    style={{ display:'flex', alignItems:'center', gap:9, cursor:'pointer' }}>
+                    <div className={`goal-check${g.done?' done':''}`}>
+                      {g.done && <span style={{ fontSize:9, color:'var(--db-text)' }}>✓</span>}
                     </div>
-                    <span className="text-[9px] text-[#94A3B8]">{d.label}</span>
+                    <span style={{ fontSize:12, transition:'all 0.2s',
+                      color: g.done ?  'var(--db-text-muted)' :  'var(--db-text-light)',
+                      textDecoration: g.done ? 'line-through' : 'none' }}>{g.label}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Due today */}
-            <div className="p-5 rounded-2xl border bg-white dark:bg-[#141B2D] border-[#E2E8F0] dark:border-[#1F2937] shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <i className="ti ti-calendar-event" style={{ fontSize: 16, color: '#F59E0B' }} aria-hidden="true"></i>
-                  <p className="text-sm font-semibold text-[#0F172A] dark:text-[#F1F5F9]">Due Today</p>
-                </div>
-                <span className="text-lg font-bold text-[#0F172A] dark:text-[#F1F5F9]">{stats.dueToday}</span>
+            {/* Streak */}
+            <div className="db-card" style={{ padding:18 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:10 }}>
+                <span style={{ fontSize:15 }}>🔥</span>
+                <div style={{ fontSize:13, fontWeight:700 }}>{streak} day streak</div>
               </div>
-              <div className="flex flex-col gap-2 mb-4">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#64748B] dark:text-[#94A3B8]">Flashcards</span>
-                  <span className="font-medium text-[#0F172A] dark:text-[#F1F5F9]">{stats.dueToday}</span>
+              <p style={{ margin:'0 0 12px', fontSize:11, color: 'var(--db-text-muted)' }}>
+                Keep it up, {user?.full_name?.split(' ')[0]}!
+              </p>
+              <div style={{ display:'flex', justifyContent:'space-between' }}>
+                {streakDays.map((d,i) => (
+                  <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
+                    <div style={{ width:26, height:26, borderRadius:'50%', display:'flex',
+                      alignItems:'center', justifyContent:'center',
+                      background: d.filled ? 'linear-gradient(135deg,#7C3AED,#4F46E5)' : 'transparent',
+                      border: d.filled ? 'none' : '1.5px solid var(--db-border)' }}>
+                      {d.isToday && !d.filled && <div style={{ width:5, height:5, borderRadius:'50%', background:'#7C3AED' }}/>}
+                    </div>
+                    <span style={{ fontSize:9, color: 'var(--db-text-muted)' }}>{d.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Due Today */}
+            <div className="db-card" style={{ padding:18 }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+                  <span style={{ fontSize:15 }}>📅</span>
+                  <div style={{ fontSize:13, fontWeight:700 }}>Due Today</div>
                 </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#64748B] dark:text-[#94A3B8]">Quizzes pending</span>
-                  <span className="font-medium text-[#0F172A] dark:text-[#F1F5F9]">{weakTopics.length}</span>
+                <span style={{ fontSize:20, fontWeight:800 }}>{stats.dueToday}</span>
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:12 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', fontSize:11 }}>
+                  <span style={{ color: 'var(--db-text-sub)' }}>Flashcards</span>
+                  <span style={{ fontWeight:600 }}>{stats.dueToday}</span>
+                </div>
+                <div style={{ display:'flex', justifyContent:'space-between', fontSize:11 }}>
+                  <span style={{ color: 'var(--db-text-sub)' }}>Quizzes pending</span>
+                  <span style={{ fontWeight:600 }}>{weakTopics.length}</span>
                 </div>
               </div>
-              <button onClick={() => navigate('/flashcards')} className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1">
-                Review now
-                <i className="ti ti-arrow-right" style={{ fontSize: 12 }} aria-hidden="true"></i>
+              <button onClick={()=>navigate('/flashcards')}
+                style={{ fontSize:11, fontWeight:600, color:'#7C3AED', background:'none',
+                  border:'none', cursor:'pointer', padding:0, display:'flex', alignItems:'center', gap:4 }}>
+                Review now →
               </button>
             </div>
 
-            {/* Weakest topics */}
-            <div className="p-5 rounded-2xl border bg-white dark:bg-[#141B2D] border-[#E2E8F0] dark:border-[#1F2937] shadow-sm">
-              <div className="flex items-center gap-2 mb-4">
-                <i className="ti ti-target-arrow" style={{ fontSize: 16, color: '#EF4444' }} aria-hidden="true"></i>
-                <p className="text-sm font-semibold text-[#0F172A] dark:text-[#F1F5F9]">Weakest Topics</p>
+            {/* Weakest Topics */}
+            <div className="db-card" style={{ padding:18 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:14 }}>
+                <span style={{ fontSize:15 }}>🎯</span>
+                <div style={{ fontSize:13, fontWeight:700 }}>Weakest Topics</div>
               </div>
               {weakTopics.length === 0 ? (
-                <p className="text-xs text-[#94A3B8]">No weak topics yet — take a few quizzes first</p>
+                <p style={{ fontSize:11, color: 'var(--db-text-muted)', margin:0 }}>
+                  No weak topics yet — take a few quizzes first
+                </p>
               ) : (
-                <div className="flex flex-col gap-4 mb-4">
+                <div style={{ display:'flex', flexDirection:'column', gap:12, marginBottom:14 }}>
                   {weakTopics.map(t => (
                     <div key={t.topic}>
-                      <div className="flex justify-between text-xs mb-1.5">
-                        <span className="font-medium text-[#374151] dark:text-[#CBD5E1]">{t.topic}</span>
-                        <span className="font-semibold" style={{ color: t.accuracy < 50 ? '#EF4444' : '#F59E0B' }}>{t.accuracy}%</span>
+                      <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, marginBottom:5 }}>
+                        <span style={{ color: 'var(--db-text-light)' }}>{t.topic}</span>
+                        <span style={{ fontWeight:700, color: t.accuracy<50 ? '#EF4444' : '#F59E0B' }}>{t.accuracy}%</span>
                       </div>
-                      <div className="progress-bar" style={{ height: 5 }}>
-                        <div className="progress-fill" style={{ width: `${t.accuracy}%`, background: t.accuracy < 50 ? '#EF4444' : '#F59E0B' }} />
+                      <div style={{ height:4, background: 'var(--db-border-light)', borderRadius:4, overflow:'hidden' }}>
+                        <div style={{ height:'100%', width:`${t.accuracy}%`, borderRadius:4,
+                          background: t.accuracy<50 ? '#EF4444' : '#F59E0B' }}/>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
-              <button onClick={() => navigate('/quiz')} className="btn-primary text-xs w-full justify-center py-2">
-                Practice now
-                <i className="ti ti-arrow-right" style={{ fontSize: 13 }} aria-hidden="true"></i>
+              <button className="db-btn db-btn-primary" onClick={()=>navigate('/quiz')}
+                style={{ width:'100%', justifyContent:'center', padding:'8px 0' }}>
+                Practice now →
               </button>
             </div>
+
+            {/* Revision Reminders */}
+            <div className="db-card" style={{ padding:18 }}>
+              <div style={{ fontSize:13, fontWeight:700, marginBottom:12 }}>Revision Reminders</div>
+              <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                {[
+                  { title: weakTopics[0]?.topic || 'Flashcard Review', sub:'Today · Review session', color:'#7C3AED', urgent:true  },
+                  { title: weakTopics[1]?.topic || 'Quiz Practice',    sub:'Tomorrow · 9 AM',        color:'#22D3EE', urgent:false },
+                  { title: 'Mixed Practice',                            sub:'Thursday',               color:'#F59E0B', urgent:false },
+                ].map((r,i) => (
+                  <div key={i} className="rem-row" onClick={()=>navigate('/revision')}>
+                    <div style={{ width:3, height:32, borderRadius:3, background:r.color, flexShrink:0 }}/>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:12, fontWeight:600, overflow:'hidden',
+                        textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.title}</div>
+                      <div style={{ fontSize:10, color: 'var(--db-text-muted)' }}>{r.sub}</div>
+                    </div>
+                    {r.urgent && (
+                      <span style={{ background:'rgba(239,68,68,0.2)', color:'#F87171',
+                        fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:20 }}>Soon</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

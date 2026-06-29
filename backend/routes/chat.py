@@ -148,6 +148,7 @@ def ask_question(
     # Step 7: Format sources
     sources = [
         {
+            "document_id": c.get("document_id"),
             "document_name": c["document_name"],
             "page_num": c["page_num"],
             "similarity_score": c["similarity_score"],

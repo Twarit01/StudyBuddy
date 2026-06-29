@@ -36,10 +36,12 @@ from routes.quiz       import router as quiz_router
 from routes.flashcards import router as flashcards_router
 from routes.progress   import router as progress_router
 from routes.subjects   import router as subjects_router
+from routes.reader     import router as reader_router
 
 app.include_router(auth_router,       prefix="/api/auth",       tags=["Auth"])
 app.include_router(subjects_router,   prefix="/api/subjects",   tags=["Subjects"])
 app.include_router(documents_router,  prefix="/api/documents",  tags=["Documents"])
+app.include_router(reader_router,     prefix="/api/reader",     tags=["Reader"])
 app.include_router(chat_router,       prefix="/api/chat",       tags=["Chat"])
 app.include_router(quiz_router,       prefix="/api/quiz",       tags=["Quiz"])
 app.include_router(flashcards_router, prefix="/api/flashcards", tags=["Flashcards"])

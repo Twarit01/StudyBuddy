@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 export default function SourceCitation({ sources, confidence }) {
+  const navigate = useNavigate()
   const [expanded, setExpanded] = useState(false)
 
   if (!sources || sources.length === 0) return null
@@ -13,9 +15,13 @@ export default function SourceCitation({ sources, confidence }) {
 
   const conf = confidenceConfig[confidence] || confidenceConfig.medium
 
+  const openInReader = (source) => {
+    if (!source.document_id) return
+    navigate(`/reader/${source.document_id}`, { state: { page: source.page_num || 1 } })
+  }
+
   return (
     <div className="mt-2">
-      {/* Confidence badge + toggle */}
       <div className="flex items-center gap-2">
         <span className={`text-xs px-2 py-0.5 rounded-full border ${conf.bg} ${conf.color} ${conf.border}`}>
           {conf.label}
@@ -28,13 +34,16 @@ export default function SourceCitation({ sources, confidence }) {
         </button>
       </div>
 
-      {/* Sources list */}
       {expanded && (
         <div className="mt-2 flex flex-col gap-2">
           {sources.map((source, i) => (
             <div
               key={i}
-              className="bg-[#222230] border border-[#334155] rounded-lg p-2.5"
+              className={`bg-[#222230] border border-[#334155] rounded-lg p-2.5 ${
+                source.document_id ? 'cursor-pointer hover:border-[#7c6af7]/50 transition-colors' : ''
+              }`}
+              onClick={() => source.document_id && openInReader(source)}
+              role={source.document_id ? 'button' : undefined}
             >
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-xs">📄</span>
@@ -48,8 +57,13 @@ export default function SourceCitation({ sources, confidence }) {
               <p className="text-xs text-gray-400 leading-relaxed line-clamp-2">
                 {source.text_preview}
               </p>
-              <div className="mt-1 text-xs text-gray-600">
-                Relevance: {Math.round(source.similarity_score * 100)}%
+              <div className="mt-1 flex items-center justify-between">
+                <span className="text-xs text-gray-600">
+                  Relevance: {Math.round(source.similarity_score * 100)}%
+                </span>
+                {source.document_id && (
+                  <span className="text-xs text-[#7c6af7]">Open in Reader →</span>
+                )}
               </div>
             </div>
           ))}

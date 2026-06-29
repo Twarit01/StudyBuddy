@@ -4,14 +4,15 @@ import { generateFlashcards, getAllFlashcards, getDueFlashcards, reviewFlashcard
 import { listDocuments } from '../api/documents'
 
 const QUALITY_BUTTONS = [
-  { quality: 0, label: 'Forgot',  sub: 'Reset',         bg: '#FEF2F2', darkBg: 'rgba(239,68,68,0.12)',  border: '#FECACA', darkBorder: 'rgba(239,68,68,0.3)',  color: '#DC2626' },
-  { quality: 2, label: 'Hard',    sub: 'Almost',        bg: '#FFFBEB', darkBg: 'rgba(245,158,11,0.12)', border: '#FDE68A', darkBorder: 'rgba(245,158,11,0.3)', color: '#D97706' },
-  { quality: 3, label: 'Good',    sub: 'Got it',        bg: '#ECFDF5', darkBg: 'rgba(16,185,129,0.12)', border: '#A7F3D0', darkBorder: 'rgba(16,185,129,0.3)', color: '#059669' },
-  { quality: 5, label: 'Perfect', sub: 'Long interval', bg: '#EEF2FF', darkBg: 'rgba(99,102,241,0.12)', border: '#C7D2FE', darkBorder: 'rgba(99,102,241,0.3)', color: '#4F46E5' },
+  { quality:0, label:'Forgot',  sub:'Reset',         color:'#EF4444', bg:'rgba(239,68,68,0.12)',   border:'rgba(239,68,68,0.3)'   },
+  { quality:2, label:'Hard',    sub:'Almost',         color:'#F59E0B', bg:'rgba(245,158,11,0.12)',  border:'rgba(245,158,11,0.3)'  },
+  { quality:3, label:'Good',    sub:'Got it',         color:'#10B981', bg:'rgba(16,185,129,0.12)',  border:'rgba(16,185,129,0.3)'  },
+  { quality:5, label:'Perfect', sub:'Long interval',  color:'#7C3AED', bg:'rgba(124,58,237,0.12)', border:'rgba(124,58,237,0.3)'  },
 ]
 
 export default function Flashcards() {
   const location = useLocation()
+
   const [cards, setCards]               = useState([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [flipped, setFlipped]           = useState(false)
@@ -22,44 +23,32 @@ export default function Flashcards() {
   const [error, setError]               = useState(null)
   const [documents, setDocuments]       = useState([])
   const [documentsError, setDocumentsError] = useState(null)
-  const [config, setConfig]             = useState({ topic: '', count: 10, documentId: '' })
-  const [sessionStats, setSessionStats] = useState({ correct: 0, wrong: 0 })
+  const [config, setConfig]             = useState({ topic:'', count:10, documentId:'' })
+  const [sessionStats, setSessionStats] = useState({ correct:0, wrong:0 })
   const [finished, setFinished]         = useState(false)
-  const [isDark, setIsDark]             = useState(false)
-
-  useEffect(() => {
-    const check = () => setIsDark(document.documentElement.classList.contains('dark'))
-    check()
-    const observer = new MutationObserver(check)
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
-    return () => observer.disconnect()
-  }, [])
 
   useEffect(() => { fetchCards() }, [mode])
 
   useEffect(() => {
-    const fetchDocuments = async () => {
+    const load = async () => {
       try { setDocuments(await listDocuments()) }
       catch (err) { console.error(err); setDocumentsError('Could not load documents') }
     }
-    fetchDocuments()
+    load()
   }, [])
 
   useEffect(() => {
-    if (location.state?.documentId) {
+    if (location.state?.documentId)
       setConfig(prev => ({ ...prev, documentId: String(location.state.documentId) }))
-    }
-    if (location.state?.mode === 'due') {
-      setMode('due')
-    }
+    if (location.state?.mode === 'due') setMode('due')
   }, [location.state])
 
   const fetchCards = async () => {
     setLoading(true); setError(null)
     setCurrentIndex(0); setFlipped(false)
-    setFinished(false); setSessionStats({ correct: 0, wrong: 0 })
+    setFinished(false); setSessionStats({ correct:0, wrong:0 })
     try {
-      const data = mode === 'due' ? await getDueFlashcards() : await getAllFlashcards()
+      const data = mode==='due' ? await getDueFlashcards() : await getAllFlashcards()
       setCards(data)
     } catch { setError('Failed to load flashcards') }
     finally { setLoading(false) }
@@ -67,8 +56,10 @@ export default function Flashcards() {
 
   const handleGenerate = async () => {
     setGenerating(true); setError(null)
-    try { await generateFlashcards(config.topic || null, config.count, config.documentId || null); await fetchCards() }
-    catch (err) { setError(err.response?.data?.detail || 'Failed to generate') }
+    try {
+      await generateFlashcards(config.topic || null, config.count, config.documentId || null)
+      await fetchCards()
+    } catch (err) { setError(err.response?.data?.detail || 'Failed to generate') }
     finally { setGenerating(false) }
   }
 
@@ -79,11 +70,11 @@ export default function Flashcards() {
     try {
       await reviewFlashcard(card.id, quality)
       setSessionStats(prev => ({
-        correct: quality >= 3 ? prev.correct + 1 : prev.correct,
-        wrong:   quality < 3  ? prev.wrong + 1  : prev.wrong,
+        correct: quality>=3 ? prev.correct+1 : prev.correct,
+        wrong:   quality<3  ? prev.wrong+1   : prev.wrong,
       }))
-      if (currentIndex + 1 >= cards.length) setFinished(true)
-      else { setCurrentIndex(prev => prev + 1); setFlipped(false) }
+      if (currentIndex+1 >= cards.length) setFinished(true)
+      else { setCurrentIndex(prev => prev+1); setFlipped(false) }
     } catch (err) { console.error(err); setError('Could not save your review. Please try again.') }
     finally { setReviewing(false) }
   }
@@ -94,221 +85,299 @@ export default function Flashcards() {
     catch (err) { console.error(err) }
   }
 
+  const handleSkip = () => {
+    if (currentIndex+1 >= cards.length) setFinished(true)
+    else { setCurrentIndex(p => p+1); setFlipped(false) }
+  }
+
   const currentCard = cards[currentIndex]
-  const progress = cards.length > 0 ? (currentIndex / cards.length) * 100 : 0
+  const progress    = cards.length > 0 ? (currentIndex / cards.length) * 100 : 0
+  const known       = sessionStats.correct
+  const learning    = sessionStats.wrong
 
   return (
-    <div className="h-full overflow-y-auto bg-[#F8FAFC] dark:bg-[#0B0F1A] transition-colors duration-200">
-      <div className="max-w-2xl mx-auto px-4 sm:px-8 py-6 sm:py-8">
+    <div style={{ height:'100%', overflowY:'auto', background:'#0C0C14', color:'#fff',
+      fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif' }}>
+      <style>{`
+        .fc-card { background:#13131F; border:1px solid rgba(255,255,255,0.07); border-radius:16px; padding:20px; }
+        .fc-input { background:#0C0C14; border:1px solid rgba(255,255,255,0.1); border-radius:10px;
+                    padding:8px 12px; color:#fff; font-size:13px; outline:none; font-family:inherit;
+                    transition:border-color 0.2s; }
+        .fc-input:focus { border-color:rgba(124,58,237,0.5); }
+        .fc-input::placeholder { color:rgba(255,255,255,0.25); }
+        .fc-select { background:#0C0C14; border:1px solid rgba(255,255,255,0.1); border-radius:10px;
+                     padding:8px 12px; color:#fff; font-size:13px; outline:none; cursor:pointer; }
+        .fc-btn { display:inline-flex; align-items:center; gap:7px; padding:9px 18px; border-radius:10px;
+                  font-size:13px; font-weight:700; cursor:pointer; border:none; transition:all 0.2s; }
+        .fc-btn-primary { background:linear-gradient(135deg,#7C3AED,#6D28D9); color:#fff; }
+        .fc-btn-primary:hover { background:linear-gradient(135deg,#8B5CF6,#7C3AED); }
+        .fc-btn-primary:disabled { opacity:0.5; cursor:not-allowed; }
+        .fc-btn-ghost { background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.7); }
+        .fc-btn-ghost:hover { background:rgba(255,255,255,0.1); color:#fff; }
+        .fc-btn-danger { background:rgba(239,68,68,0.12); color:#F87171;
+                         border:1px solid rgba(239,68,68,0.25); }
+        .fc-btn-danger:hover { background:rgba(239,68,68,0.2); }
+        .flip-container { perspective:1200px; cursor:pointer; }
+        .flip-inner { position:relative; width:100%; transition:transform 0.55s cubic-bezier(.4,0,.2,1);
+                      transform-style:preserve-3d; }
+        .flip-inner.flipped { transform:rotateY(180deg); }
+        .flip-face { position:absolute; width:100%; height:100%; backface-visibility:hidden;
+                     border-radius:18px; display:flex; flex-direction:column;
+                     align-items:center; justify-content:center; padding:32px; box-sizing:border-box; }
+        .flip-front { background:#1A1A2D; border:1px solid rgba(255,255,255,0.08); }
+        .flip-back  { background:linear-gradient(135deg,rgba(124,58,237,0.2),rgba(79,70,229,0.15));
+                      border:1px solid rgba(124,58,237,0.35); transform:rotateY(180deg); }
+        .qual-btn { display:flex; flex-direction:column; align-items:center; padding:14px 8px;
+                    border-radius:12px; border:1px solid; cursor:pointer; transition:all 0.15s;
+                    font-family:inherit; }
+        .qual-btn:hover { transform:translateY(-2px); }
+        .qual-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+        .mode-tab { flex:1; padding:8px 0; border-radius:9px; font-size:12px; font-weight:600;
+                    cursor:pointer; border:none; transition:all 0.2s; font-family:inherit; }
+        .progress-track { height:4px; background:rgba(255,255,255,0.08); border-radius:4px; overflow:hidden; }
+        .progress-fill  { height:100%; border-radius:4px; transition:width 0.4s; }
+        @keyframes spin { to { transform:rotate(360deg) } }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+        .fade-up { animation:fadeUp 0.25s ease; }
+      `}</style>
+
+      <div style={{ maxWidth:640, margin:'0 auto', padding:'28px 24px' }}>
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-8">
+        <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between',
+          marginBottom:24, gap:12 }}>
           <div>
-            <h1 className="text-display text-[#0F172A] dark:text-[#F1F5F9]">Flashcards</h1>
-            <p className="text-body mt-1 text-[#64748B] dark:text-[#94A3B8]">Spaced repetition powered by the SM-2 algorithm</p>
+            <h1 style={{ fontSize:28, fontWeight:800, margin:0, letterSpacing:'-0.5px' }}>Flashcards</h1>
+            <p style={{ color:'rgba(255,255,255,0.4)', fontSize:13, margin:'5px 0 0' }}>
+              Spaced repetition · SM-2 algorithm · {cards.length} cards loaded
+            </p>
           </div>
-          {cards.length > 0 && (
-            <button onClick={handleDeleteAll} className="btn-secondary text-xs py-1.5 px-3 text-red-500 border-red-200 dark:border-red-500/30 hover:bg-red-50 dark:hover:bg-red-500/10">
-              <i className="ti ti-trash" style={{ fontSize: 13 }} aria-hidden="true"></i>
-              Delete all
-            </button>
-          )}
+          <div style={{ display:'flex', gap:8, alignItems:'center', flexShrink:0 }}>
+            {/* Session stat pills */}
+            <div style={{ display:'flex', gap:6 }}>
+              <div style={{ padding:'5px 12px', borderRadius:20, fontSize:12, fontWeight:700,
+                background:'rgba(16,185,129,0.15)', color:'#6EE7B7', border:'1px solid rgba(16,185,129,0.25)' }}>
+                {known} known
+              </div>
+              <div style={{ padding:'5px 12px', borderRadius:20, fontSize:12, fontWeight:700,
+                background:'rgba(239,68,68,0.15)', color:'#FCA5A5', border:'1px solid rgba(239,68,68,0.25)' }}>
+                {learning} learning
+              </div>
+              <div style={{ padding:'5px 12px', borderRadius:20, fontSize:12, fontWeight:700,
+                background:'rgba(255,255,255,0.07)', color:'rgba(255,255,255,0.5)' }}>
+                {Math.max(0, cards.length - currentIndex)} left
+              </div>
+            </div>
+            {cards.length > 0 && (
+              <button onClick={handleDeleteAll} className="fc-btn fc-btn-danger"
+                style={{ padding:'6px 12px', fontSize:11 }}>🗑 Delete all</button>
+            )}
+          </div>
         </div>
 
-        {/* Generate panel */}
-        <div className="p-5 mb-6 rounded-2xl border bg-white dark:bg-[#141B2D] border-[#E2E8F0] dark:border-[#1F2937] shadow-sm">
-          <h2 className="text-title text-[#0F172A] dark:text-[#F1F5F9] mb-4">Generate flashcards</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-3">
-            <input
-              type="text" value={config.topic}
-              onChange={e => setConfig({ ...config, topic: e.target.value })}
-              placeholder="Topic (optional — leave blank for all documents)"
-              className="flex-1 min-w-[200px] rounded-lg px-3 py-2 text-sm outline-none border transition-colors
-                bg-[#F8FAFC] dark:bg-[#0B0F1A] border-[#E2E8F0] dark:border-[#1F2937]
-                text-[#0F172A] dark:text-[#F1F5F9] placeholder-slate-400 focus:border-indigo-400"
-            />
-            <select
-              value={config.documentId}
-              onChange={e => setConfig({ ...config, documentId: e.target.value })}
-              className="rounded-lg px-3 py-2 text-sm outline-none border min-w-0 sm:w-44
-                bg-[#F8FAFC] dark:bg-[#0B0F1A] border-[#E2E8F0] dark:border-[#1F2937]
-                text-[#0F172A] dark:text-[#F1F5F9]"
-            >
-              <option value="">All documents</option>
-              {documents.map(doc => <option key={doc.id} value={doc.id}>{doc.original_name}</option>)}
-            </select>
-            <select
-              value={config.count}
-              onChange={e => setConfig({ ...config, count: Number(e.target.value) })}
-              className="rounded-lg px-3 py-2 text-sm outline-none border w-auto
-                bg-[#F8FAFC] dark:bg-[#0B0F1A] border-[#E2E8F0] dark:border-[#1F2937]
-                text-[#0F172A] dark:text-[#F1F5F9]"
-            >
-              {[5,10,15,20].map(n => <option key={n} value={n}>{n} cards</option>)}
-            </select>
-            <button onClick={handleGenerate} disabled={generating} className="btn-primary text-sm justify-center">
+        {/* Generate Panel */}
+        <div className="fc-card" style={{ marginBottom:16 }}>
+          <h2 style={{ margin:'0 0 14px', fontSize:15, fontWeight:700 }}>✨ Generate Flashcards</h2>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr auto auto auto', gap:10, alignItems:'end' }}>
+            <div>
+              <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.35)',
+                marginBottom:5, letterSpacing:0.5 }}>TOPIC</div>
+              <input type="text" value={config.topic}
+                onChange={e=>setConfig({...config, topic:e.target.value})}
+                placeholder="Topic (optional)"
+                className="fc-input" style={{ width:'100%', boxSizing:'border-box' }}/>
+            </div>
+            <div>
+              <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.35)',
+                marginBottom:5, letterSpacing:0.5 }}>DOCUMENT</div>
+              <select value={config.documentId}
+                onChange={e=>setConfig({...config, documentId:e.target.value})}
+                className="fc-select">
+                <option value="">All documents</option>
+                {documents.map(d => <option key={d.id} value={d.id}>{d.original_name}</option>)}
+              </select>
+            </div>
+            <div>
+              <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.35)',
+                marginBottom:5, letterSpacing:0.5 }}>COUNT</div>
+              <select value={config.count}
+                onChange={e=>setConfig({...config, count:Number(e.target.value)})}
+                className="fc-select">
+                {[5,10,15,20].map(n => <option key={n} value={n}>{n} cards</option>)}
+              </select>
+            </div>
+            <button onClick={handleGenerate} disabled={generating} className="fc-btn fc-btn-primary">
               {generating
-                ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Generating...</>
-                : <><i className="ti ti-sparkles" style={{ fontSize: 15 }} aria-hidden="true"></i>Generate</>}
+                ? <><div style={{ width:14, height:14, border:'2px solid rgba(255,255,255,0.3)',
+                    borderTopColor:'#fff', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
+                    Generating...</>
+                : '✨ Generate'}
             </button>
           </div>
-          {error && (
-            <div className="mt-3 px-3 py-2 rounded-lg text-xs bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300">{error}</div>
-          )}
-          {documentsError && (
-            <div className="mt-3 px-3 py-2 rounded-lg text-xs bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300">{documentsError}</div>
+          {(error || documentsError) && (
+            <div style={{ marginTop:10, padding:'8px 12px', borderRadius:9, fontSize:12,
+              background:'rgba(239,68,68,0.1)', color:'#FCA5A5' }}>
+              {error || documentsError}
+            </div>
           )}
         </div>
 
-        {/* Mode tabs */}
+        {/* Mode Tabs */}
         {cards.length > 0 && (
-          <div className="flex gap-1 mb-6 p-1 rounded-xl bg-white dark:bg-[#141B2D] border border-[#E2E8F0] dark:border-[#1F2937]">
+          <div style={{ display:'flex', gap:4, padding:4, borderRadius:12, marginBottom:16,
+            background:'#13131F', border:'1px solid rgba(255,255,255,0.07)' }}>
             {[
-              { id: 'all',  label: `All cards (${cards.length})` },
-              { id: 'due',  label: 'Due today' },
+              { id:'all', label:`All cards (${cards.length})` },
+              { id:'due', label:'Due today' },
             ].map(m => (
-              <button
-                key={m.id} onClick={() => setMode(m.id)}
-                className="flex-1 py-2 rounded-lg text-xs font-medium transition-all"
+              <button key={m.id} onClick={()=>setMode(m.id)} className="mode-tab"
                 style={{
-                  background: mode === m.id ? '#6366F1' : 'transparent',
-                  color: mode === m.id ? '#ffffff' : (isDark ? '#94A3B8' : '#64748B'),
-                }}
-              >
+                  background: mode===m.id ? 'linear-gradient(135deg,#7C3AED,#6D28D9)' : 'transparent',
+                  color: mode===m.id ? '#fff' : 'rgba(255,255,255,0.45)',
+                }}>
                 {m.label}
               </button>
             ))}
           </div>
         )}
 
+        {/* Loading */}
         {loading && (
-          <div className="flex justify-center py-16">
-            <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          <div style={{ display:'flex', justifyContent:'center', padding:60 }}>
+            <div style={{ width:24, height:24, border:'3px solid #7C3AED',
+              borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
           </div>
         )}
 
-        {!loading && cards.length === 0 && (
-          <div className="p-12 flex flex-col items-center text-center rounded-2xl border bg-white dark:bg-[#141B2D] border-[#E2E8F0] dark:border-[#1F2937] shadow-sm">
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 bg-[#EEF2FF] dark:bg-indigo-500/15">
-              <i className="ti ti-cards" style={{ fontSize: 26, color: '#6366F1' }} aria-hidden="true"></i>
-            </div>
-            <p className="text-sm font-semibold text-[#0F172A] dark:text-[#F1F5F9] mb-1">No flashcards yet</p>
-            <p className="text-caption text-[#94A3B8]">Upload study materials and generate cards above</p>
+        {/* Empty state */}
+        {!loading && cards.length===0 && !finished && (
+          <div className="fc-card fade-up" style={{ display:'flex', flexDirection:'column',
+            alignItems:'center', textAlign:'center', padding:'52px 32px' }}>
+            <div style={{ width:56, height:56, borderRadius:16, background:'rgba(124,58,237,0.15)',
+              display:'flex', alignItems:'center', justifyContent:'center', fontSize:28, marginBottom:16 }}>🃏</div>
+            <p style={{ fontSize:15, fontWeight:700, marginBottom:5 }}>No flashcards yet</p>
+            <p style={{ fontSize:13, color:'rgba(255,255,255,0.38)', margin:0 }}>
+              Upload study materials and generate cards above
+            </p>
           </div>
         )}
 
+        {/* Session Complete */}
         {finished && (
-          <div className="p-12 flex flex-col items-center text-center rounded-2xl border bg-white dark:bg-[#141B2D] border-[#E2E8F0] dark:border-[#1F2937] shadow-sm">
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 bg-[#ECFDF5] dark:bg-emerald-500/15">
-              <i className="ti ti-confetti" style={{ fontSize: 26, color: '#10B981' }} aria-hidden="true"></i>
-            </div>
-            <h2 className="text-lg font-semibold text-[#0F172A] dark:text-[#F1F5F9] mb-1" style={{ letterSpacing: '-0.3px' }}>Session complete!</h2>
-            <div className="flex gap-6 mt-2 mb-6">
-              <div className="text-center">
-                <div className="text-2xl font-bold" style={{ color: '#10B981', letterSpacing: '-0.5px' }}>{sessionStats.correct}</div>
-                <div className="text-caption text-[#94A3B8]">correct</div>
+          <div className="fc-card fade-up" style={{ display:'flex', flexDirection:'column',
+            alignItems:'center', textAlign:'center', padding:'52px 32px' }}>
+            <div style={{ width:56, height:56, borderRadius:16, background:'rgba(16,185,129,0.15)',
+              display:'flex', alignItems:'center', justifyContent:'center', fontSize:28, marginBottom:16 }}>🎉</div>
+            <h2 style={{ fontSize:22, fontWeight:800, margin:'0 0 6px', letterSpacing:'-0.5px' }}>
+              Session complete!
+            </h2>
+            <div style={{ display:'flex', gap:32, margin:'16px 0 28px' }}>
+              <div style={{ textAlign:'center' }}>
+                <div style={{ fontSize:32, fontWeight:800, color:'#10B981', letterSpacing:'-0.5px' }}>
+                  {sessionStats.correct}
+                </div>
+                <div style={{ fontSize:12, color:'rgba(255,255,255,0.4)', marginTop:3 }}>correct</div>
               </div>
-              <div className="w-px bg-[#E2E8F0] dark:bg-[#1F2937]" />
-              <div className="text-center">
-                <div className="text-2xl font-bold" style={{ color: '#EF4444', letterSpacing: '-0.5px' }}>{sessionStats.wrong}</div>
-                <div className="text-caption text-[#94A3B8]">to review</div>
+              <div style={{ width:1, background:'rgba(255,255,255,0.08)' }}/>
+              <div style={{ textAlign:'center' }}>
+                <div style={{ fontSize:32, fontWeight:800, color:'#EF4444', letterSpacing:'-0.5px' }}>
+                  {sessionStats.wrong}
+                </div>
+                <div style={{ fontSize:12, color:'rgba(255,255,255,0.4)', marginTop:3 }}>to review</div>
               </div>
             </div>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button onClick={fetchCards} className="btn-primary text-sm">Study again</button>
-              <button onClick={() => setMode('due')} className="btn-secondary text-sm">Review due</button>
+            <div style={{ display:'flex', gap:10 }}>
+              <button onClick={fetchCards} className="fc-btn fc-btn-primary">Study again</button>
+              <button onClick={()=>setMode('due')} className="fc-btn fc-btn-ghost">Review due</button>
             </div>
           </div>
         )}
 
+        {/* Active Card */}
         {!loading && !finished && currentCard && (
-          <div>
-            {/* Progress */}
-            <div className="flex items-center gap-4 mb-5">
-              <div className="flex-1 progress-bar">
-                <div className="progress-fill progress-fill-cyan" style={{ width: `${progress}%` }} />
+          <div className="fade-up">
+            {/* Progress bar */}
+            <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
+              <div className="progress-track" style={{ flex:1 }}>
+                <div className="progress-fill"
+                  style={{ width:`${progress}%`, background:'linear-gradient(90deg,#7C3AED,#22D3EE)' }}/>
               </div>
-              <span className="text-xs font-mono text-slate-400 flex-shrink-0">
-                {currentIndex + 1} / {cards.length}
+              <span style={{ fontSize:11, fontFamily:'monospace', color:'rgba(255,255,255,0.38)', flexShrink:0 }}>
+                {currentIndex+1} / {cards.length}
               </span>
             </div>
 
-            {/* Session stats */}
-            <div className="flex flex-wrap gap-3 mb-5">
-              <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: '#10B981' }}>
-                <i className="ti ti-check" style={{ fontSize: 14 }} aria-hidden="true"></i>
-                {sessionStats.correct} correct
-              </div>
-              <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: '#EF4444' }}>
-                <i className="ti ti-x" style={{ fontSize: 14 }} aria-hidden="true"></i>
-                {sessionStats.wrong} to review
-              </div>
-              {currentCard.topic && (
-                <span className="badge badge-indigo ml-auto">{currentCard.topic}</span>
-              )}
+            {/* Dot indicators */}
+            <div style={{ display:'flex', gap:5, marginBottom:20, justifyContent:'center' }}>
+              {cards.map((_,i) => (
+                <div key={i} style={{ width:i===currentIndex?20:6, height:6, borderRadius:3,
+                  background: i<currentIndex ? '#10B981' : i===currentIndex ? '#7C3AED' : 'rgba(255,255,255,0.12)',
+                  transition:'all 0.3s' }}/>
+              ))}
             </div>
 
-            {/* Card */}
-            <div
-              className="flip-card mb-5"
-              style={{ minHeight: '260px', height: 'clamp(260px, 46vh, 360px)' }}
-              onClick={() => setFlipped(prev => !prev)}
-            >
-              <div className={`flip-card-inner ${flipped ? 'flipped' : ''}`}>
-
+            {/* Flip card */}
+            <div className="flip-container"
+              style={{ height:'clamp(220px,42vh,320px)', marginBottom:20 }}
+              onClick={()=>setFlipped(p=>!p)}>
+              <div className={`flip-inner${flipped?' flipped':''}`} style={{ height:'100%' }}>
                 {/* Front */}
-                <div className="flip-card-front rounded-2xl border flex flex-col items-center justify-center p-8 text-center cursor-pointer bg-white dark:bg-[#141B2D] border-[#E2E8F0] dark:border-[#1F2937] shadow-sm">
-                  <p className="text-label mb-4 text-[#CBD5E1] dark:text-slate-500">Question</p>
-                  <p className="text-base font-medium text-[#0F172A] dark:text-[#F1F5F9] leading-relaxed" style={{ letterSpacing: '-0.2px' }}>
-                    {currentCard.front}
-                  </p>
-                  <div className="flex items-center gap-2 mt-6 text-xs text-[#CBD5E1] dark:text-slate-500">
-                    <i className="ti ti-hand-click" style={{ fontSize: 14 }} aria-hidden="true"></i>
-                    Click to reveal answer
+                <div className="flip-face flip-front" style={{ textAlign:'center' }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.3)',
+                    letterSpacing:2, textTransform:'uppercase', marginBottom:16 }}>Question</div>
+                  <p style={{ fontSize:16, fontWeight:600, lineHeight:1.6, margin:0,
+                    color:'rgba(255,255,255,0.9)' }}>{currentCard.front}</p>
+                  <div style={{ position:'absolute', bottom:20, fontSize:11, color:'rgba(255,255,255,0.25)',
+                    display:'flex', alignItems:'center', gap:5 }}>
+                    <span>↺</span> Tap to flip
                   </div>
                 </div>
-
                 {/* Back */}
-                <div className="flip-card-back flex flex-col items-center justify-center p-8 text-center cursor-pointer rounded-2xl border bg-[#EEF2FF] dark:bg-indigo-500/10 border-[#C7D2FE] dark:border-indigo-500/30">
-                  <p className="text-label mb-4 text-indigo-400 dark:text-indigo-300">Answer</p>
-                  <p className="text-base font-medium leading-relaxed text-indigo-700 dark:text-indigo-200" style={{ letterSpacing: '-0.2px' }}>
-                    {currentCard.back}
-                  </p>
+                <div className="flip-face flip-back" style={{ textAlign:'center' }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:'rgba(196,181,253,0.7)',
+                    letterSpacing:2, textTransform:'uppercase', marginBottom:16 }}>Answer</div>
+                  <p style={{ fontSize:16, fontWeight:600, lineHeight:1.6, margin:0,
+                    color:'rgba(255,255,255,0.95)' }}>{currentCard.back}</p>
                 </div>
               </div>
             </div>
 
-            {/* Rating buttons */}
+            {/* Topic badge */}
+            {currentCard.topic && (
+              <div style={{ display:'flex', justifyContent:'center', marginBottom:16 }}>
+                <span style={{ padding:'4px 12px', borderRadius:20, fontSize:11, fontWeight:700,
+                  background:'rgba(124,58,237,0.2)', color:'#C4B5FD',
+                  border:'1px solid rgba(124,58,237,0.3)' }}>{currentCard.topic}</span>
+              </div>
+            )}
+
+            {/* Rating buttons (after flip) or Skip */}
             {flipped ? (
               <div>
-                <p className="text-caption text-center mb-3 text-[#94A3B8]">How well did you know this?</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                <p style={{ fontSize:12, textAlign:'center', color:'rgba(255,255,255,0.38)', marginBottom:12 }}>
+                  How well did you know this?
+                </p>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, marginBottom:10 }}>
                   {QUALITY_BUTTONS.map(btn => (
-                    <button
-                      key={btn.quality}
-                      onClick={() => handleReview(btn.quality)}
-                      disabled={reviewing}
-                      className="flex flex-col items-center py-3 rounded-xl border transition-all hover:scale-105"
-                      style={{ background: isDark ? btn.darkBg : btn.bg, borderColor: isDark ? btn.darkBorder : btn.border }}
-                    >
-                      <span className="text-sm font-semibold" style={{ color: btn.color }}>{btn.label}</span>
-                      <span className="text-[10px] mt-0.5 text-[#94A3B8]">{btn.sub}</span>
+                    <button key={btn.quality} onClick={()=>handleReview(btn.quality)}
+                      disabled={reviewing} className="qual-btn"
+                      style={{ background:btn.bg, borderColor:btn.border }}>
+                      <span style={{ fontSize:14, fontWeight:700, color:btn.color }}>{btn.label}</span>
+                      <span style={{ fontSize:10, color:'rgba(255,255,255,0.38)', marginTop:3 }}>{btn.sub}</span>
                     </button>
                   ))}
                 </div>
-                <p className="text-[10px] text-center text-[#CBD5E1] dark:text-slate-500">
+                <p style={{ fontSize:10, textAlign:'center', color:'rgba(255,255,255,0.2)', margin:0 }}>
                   SM-2 algorithm schedules your next review automatically
                 </p>
               </div>
             ) : (
-              <div className="flex justify-center">
-                <button
-                  onClick={() => {
-                    if (currentIndex + 1 >= cards.length) setFinished(true)
-                    else { setCurrentIndex(p => p + 1); setFlipped(false) }
-                  }}
-                  className="text-xs font-medium transition-colors text-[#CBD5E1] dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
-                >
+              <div style={{ display:'flex', justifyContent:'center' }}>
+                <button onClick={handleSkip}
+                  style={{ background:'none', border:'none', cursor:'pointer', fontSize:12,
+                    color:'rgba(255,255,255,0.3)', fontFamily:'inherit', transition:'color 0.15s' }}
+                  onMouseEnter={e=>e.currentTarget.style.color='rgba(255,255,255,0.6)'}
+                  onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,0.3)'}>
                   Skip this card →
                 </button>
               </div>

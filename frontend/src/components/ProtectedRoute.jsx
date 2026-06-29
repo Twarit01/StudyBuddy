@@ -1,30 +1,33 @@
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth()
+  const location = useLocation()
 
-  // Still checking localStorage — show nothing
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0f0f13] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-[#7c6af7] border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm text-gray-500">Loading...</span>
-        </div>
+      <div style={{
+        minHeight:'100vh', background:'#0C0C14',
+        display:'flex', flexDirection:'column',
+        alignItems:'center', justifyContent:'center', gap:12
+      }}>
+        <div style={{
+          width:28, height:28,
+          border:'3px solid #7C3AED',
+          borderTopColor:'transparent',
+          borderRadius:'50%',
+          animation:'spin 0.8s linear infinite'
+        }}/>
+        <span style={{ fontSize:13, color:'rgba(255,255,255,0.4)' }}>Loading...</span>
+        <style>{`@keyframes spin { to { transform:rotate(360deg) } }`}</style>
       </div>
     )
   }
 
-  // Not logged in — redirect to login
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />
   }
 
   return children
 }
-
-
-
-
-

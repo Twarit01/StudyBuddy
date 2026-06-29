@@ -2,13 +2,22 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { listSubjects, createSubject, deleteSubject, getSubjectOverview } from '../api/subjects'
 import { listDocuments, uploadDocument, deleteDocument, assignSubject, regenerateSummary, generateFormulaSheet } from '../api/documents'
+import { listAllReadingProgress } from '../api/reader'
 import { exportFormulaSheetPDF, exportSummaryPDF } from '../utils/exportPDF'
 
 const SUBJECT_COLORS = ['#6366F1','#22D3EE','#10B981','#F59E0B','#EC4899','#EF4444','#8B5CF6','#14B8A6']
 const SUBJECT_EMOJIS = ['📚','💻','⚡','🔬','📐','🧮','🌊','⚙️','📊','🧪']
 
+const FILE_ICON_COLORS = {
+  pdf:  { bg:'rgba(139,92,246,0.2)',  color:'#8B5CF6' },
+  docx: { bg:'rgba(59,130,246,0.2)',  color:'#3B82F6' },
+  txt:  { bg:'rgba(16,185,129,0.2)',  color:'#10B981' },
+}
+const fileStyle = (type) => FILE_ICON_COLORS[type] || FILE_ICON_COLORS.txt
+
 export default function Documents() {
   const navigate = useNavigate()
+
   const [subjects, setSubjects]               = useState([])
   const [documents, setDocuments]             = useState([])
   const [activeSubject, setActiveSubject]     = useState(null)
@@ -16,7 +25,7 @@ export default function Documents() {
   const [uploading, setUploading]             = useState(false)
   const [uploadProgress, setUploadProgress]   = useState(0)
   const [showNewSubject, setShowNewSubject]   = useState(false)
-  const [newSubject, setNewSubject]           = useState({ name: '', color: '#6366F1', emoji: '📚' })
+  const [newSubject, setNewSubject]           = useState({ name:'', color:'#6366F1', emoji:'📚' })
   const [selectedDoc, setSelectedDoc]         = useState(null)
   const [docSummary, setDocSummary]           = useState(null)
   const [docFormulas, setDocFormulas]         = useState(null)
@@ -27,8 +36,20 @@ export default function Documents() {
   const [subjectOverview, setSubjectOverview] = useState(null)
   const [loadingOverview, setLoadingOverview] = useState(false)
   const [error, setError]                     = useState(null)
+  const [progressMap, setProgressMap]         = useState({})
 
-  useEffect(() => { fetchSubjects(); fetchDocuments() }, [])
+  const readPct = (doc) => progressMap[doc.id]?.percent ?? 0
+
+  useEffect(() => { fetchSubjects(); fetchDocuments(); fetchReadingProgress() }, [])
+
+  const fetchReadingProgress = async () => {
+    try {
+      const rows = await listAllReadingProgress()
+      const map = {}
+      rows.forEach(r => { map[r.document_id] = r })
+      setProgressMap(map)
+    } catch { /* optional */ }
+  }
   useEffect(() => { fetchDocuments(activeSubject); setSubjectOverview(null) }, [activeSubject])
 
   const fetchSubjects = async () => {
@@ -39,7 +60,7 @@ export default function Documents() {
   const fetchDocuments = async (subjectId = null) => {
     setLoading(true); setError(null)
     try { const d = await listDocuments(subjectId); setDocuments(Array.isArray(d) ? d : []) }
-    catch { setDocuments([]); setError('Could not load documents. Please refresh and try again.') }
+    catch { setDocuments([]); setError('Could not load documents. Please refresh.') }
     finally { setLoading(false) }
   }
 
@@ -49,8 +70,9 @@ export default function Documents() {
     try {
       await uploadDocument(file, activeSubject, pct => setUploadProgress(pct))
       fetchDocuments(activeSubject); fetchSubjects()
-    } catch (err) { console.error(err); setError(err.response?.data?.detail || 'Upload failed. Please try again.') }
-    finally { setUploading(false); setUploadProgress(0) }
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Upload failed. Please try again.')
+    } finally { setUploading(false); setUploadProgress(0) }
   }
 
   const handleDrop = (e) => {
@@ -65,14 +87,16 @@ export default function Documents() {
       await createSubject(newSubject.name, newSubject.color, newSubject.emoji)
       await fetchSubjects()
       setShowNewSubject(false)
-      setNewSubject({ name: '', color: '#6366F1', emoji: '📚' })
-    } catch (err) { console.error(err); setError(err.response?.data?.detail || 'Could not generate summary.') }
+      setNewSubject({ name:'', color:'#6366F1', emoji:'📚' })
+    } catch (err) { setError(err.response?.data?.detail || 'Could not create subject.') }
   }
 
   const handleDeleteSubject = async (subjectId) => {
     if (!window.confirm('Delete this subject? Documents will move to uncategorized.')) return
-    try { await deleteSubject(subjectId); await fetchSubjects(); if (activeSubject === subjectId) setActiveSubject(null) }
-    catch (err) { console.error(err) }
+    try {
+      await deleteSubject(subjectId); await fetchSubjects()
+      if (activeSubject === subjectId) setActiveSubject(null)
+    } catch (err) { console.error(err) }
   }
 
   const handleDeleteDocument = async (docId) => {
@@ -81,10 +105,11 @@ export default function Documents() {
       setDocuments(prev => prev.filter(d => d.id !== docId))
       if (selectedDoc?.id === docId) setSelectedDoc(null)
       fetchSubjects()
-    } catch (err) { console.error(err); setError(err.response?.data?.detail || 'Could not extract formulas.') }
+    } catch (err) { setError(err.response?.data?.detail || 'Could not delete document.') }
   }
 
   const handleSelectDoc = (doc) => {
+    if (selectedDoc?.id === doc.id) { setSelectedDoc(null); return }
     setSelectedDoc(doc)
     setDocSummary(doc.summary || null)
     setDocFormulas(doc.formula_sheet || null)
@@ -98,7 +123,7 @@ export default function Documents() {
       if (selectedDoc.summary) { setDocSummary(selectedDoc.summary); return }
       const data = await regenerateSummary(selectedDoc.id)
       setDocSummary(data.summary)
-      setDocuments(prev => prev.map(d => d.id === selectedDoc.id ? { ...d, summary: data.summary } : d))
+      setDocuments(prev => prev.map(d => d.id===selectedDoc.id ? {...d, summary:data.summary} : d))
     } catch (err) { console.error(err) }
     finally { setLoadingSummary(false) }
   }
@@ -109,7 +134,7 @@ export default function Documents() {
     try {
       const data = await generateFormulaSheet(selectedDoc.id)
       setDocFormulas(data.formula_sheet)
-      setDocuments(prev => prev.map(d => d.id === selectedDoc.id ? { ...d, formula_sheet: data.formula_sheet } : d))
+      setDocuments(prev => prev.map(d => d.id===selectedDoc.id ? {...d, formula_sheet:data.formula_sheet} : d))
     } catch (err) { console.error(err) }
     finally { setLoadingFormulas(false) }
   }
@@ -130,394 +155,443 @@ export default function Documents() {
   const activeSubjectData = subjects.find(s => s.id === activeSubject)
 
   return (
-    <div className="flex h-full overflow-hidden bg-[#F8FAFC] dark:bg-[#0B0F1A] transition-colors duration-200">
+    <div style={{
+      display:'flex', height:'100%', overflow:'hidden', background:'#0C0C14',
+      color:'#fff', fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif'
+    }}>
+      <style>{`
+        .sb-item { display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:10px;
+                   cursor:pointer; font-size:12px; font-weight:500; color:rgba(255,255,255,0.45);
+                   transition:all 0.15s; border:none; background:none; width:100%; text-align:left; }
+        .sb-item:hover { background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.85); }
+        .sb-item.active { background:rgba(124,58,237,0.2); color:#C4B5FD; }
+        .doc-row { display:flex; align-items:center; gap:0; background:#13131F;
+                   border:1px solid rgba(255,255,255,0.07); border-radius:14px;
+                   padding:18px 20px; transition:all 0.15s; cursor:default; }
+        .doc-row:hover { border-color:rgba(255,255,255,0.13); }
+        .doc-row.selected { border-color:rgba(124,58,237,0.45); background:#17172A; }
+        .act-btn { display:inline-flex; align-items:center; gap:5px; padding:7px 14px;
+                   border-radius:9px; font-size:12px; font-weight:600; cursor:pointer;
+                   border:1px solid; transition:all 0.15s; font-family:inherit; white-space:nowrap; }
+        .act-btn-ghost { background:rgba(255,255,255,0.04); border-color:rgba(255,255,255,0.1);
+                         color:rgba(255,255,255,0.6); }
+        .act-btn-ghost:hover { background:rgba(255,255,255,0.08); color:#fff; }
+        .act-btn-purple { background:rgba(124,58,237,0.2); border-color:rgba(124,58,237,0.4); color:#C4B5FD; }
+        .act-btn-purple:hover { background:rgba(124,58,237,0.35); }
+        .act-btn-primary { background:linear-gradient(135deg,#7C3AED,#6D28D9); border-color:transparent; color:#fff; }
+        .act-btn-primary:hover { background:linear-gradient(135deg,#8B5CF6,#7C3AED); }
+        .tab-btn { flex:1; padding:11px 0; font-size:13px; font-weight:600; cursor:pointer;
+                   border:none; background:none; font-family:inherit; transition:all 0.15s;
+                   border-bottom:2px solid transparent; }
+        .scroll-thin::-webkit-scrollbar { width:4px; }
+        .scroll-thin::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:4px; }
+        @keyframes spin { to{transform:rotate(360deg)} }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:none} }
+        .fade-in { animation:fadeIn 0.2s ease; }
+        .pbar-track { height:4px; background:rgba(255,255,255,0.07); border-radius:4px; overflow:hidden; }
+        .pbar-fill  { height:100%; border-radius:4px; transition:width 0.4s; }
+        .del-btn { opacity:0; transition:opacity 0.15s; background:none; border:none;
+                   cursor:pointer; color:rgba(255,255,255,0.3); font-size:13px; padding:4px 6px; }
+        .del-btn:hover { color:#F87171; }
+        .doc-row:hover .del-btn { opacity:1; }
+      `}</style>
 
-      {/* Left sidebar — subjects */}
-      <div className="w-52 flex-shrink-0 flex flex-col overflow-hidden bg-white dark:bg-[#0D1220] border-r border-[#F1F5F9] dark:border-[#1F2937]">
-
-        <div className="px-4 py-4 border-b border-[#F1F5F9] dark:border-[#1F2937]">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-label text-[#94A3B8]">Subjects</h2>
-            <button onClick={() => setShowNewSubject(true)}
-              className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-indigo-50 dark:hover:bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 transition-colors">
-              <i className="ti ti-plus" style={{ fontSize: 14 }} aria-hidden="true"></i>
-            </button>
+      {/* ── Left: Subjects sidebar ── */}
+      <div style={{
+        width:196, flexShrink:0, display:'flex', flexDirection:'column',
+        background:'#0E0E1A', borderRight:'1px solid rgba(255,255,255,0.06)', overflow:'hidden'
+      }}>
+        <div style={{ padding:'16px 12px 10px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+            <span style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.28)', letterSpacing:1 }}>SUBJECTS</span>
+            <button onClick={()=>setShowNewSubject(p=>!p)}
+              style={{ width:22, height:22, borderRadius:6, background:'rgba(124,58,237,0.2)',
+                border:'none', cursor:'pointer', color:'#C4B5FD', fontSize:15,
+                display:'flex', alignItems:'center', justifyContent:'center', lineHeight:1 }}>+</button>
           </div>
 
           {showNewSubject && (
-            <div className="mb-3 p-3 rounded-xl bg-[#F8FAFC] dark:bg-[#141B2D] border border-[#E2E8F0] dark:border-[#1F2937]">
-              <input
-                type="text" value={newSubject.name}
-                onChange={e => setNewSubject({ ...newSubject, name: e.target.value })}
+            <div style={{ padding:11, borderRadius:11, background:'rgba(255,255,255,0.04)',
+              border:'1px solid rgba(255,255,255,0.08)', marginBottom:8 }}>
+              <input type="text" value={newSubject.name}
+                onChange={e=>setNewSubject({...newSubject, name:e.target.value})}
                 placeholder="Subject name"
-                className="w-full rounded-lg px-2.5 py-1.5 text-xs outline-none mb-2 border
-                  bg-white dark:bg-[#0B0F1A] border-[#E2E8F0] dark:border-[#1F2937]
-                  text-[#0F172A] dark:text-[#F1F5F9] focus:border-indigo-400"
-                onKeyDown={e => e.key === 'Enter' && handleCreateSubject()}
+                onKeyDown={e=>e.key==='Enter'&&handleCreateSubject()}
                 autoFocus
-              />
-              <div className="flex gap-1 flex-wrap mb-2">
-                {SUBJECT_EMOJIS.map(em => (
-                  <button key={em} onClick={() => setNewSubject({ ...newSubject, emoji: em })}
-                    className={`text-sm p-0.5 rounded transition-colors ${newSubject.emoji === em ? 'bg-indigo-100 dark:bg-indigo-500/20' : 'hover:bg-slate-100 dark:hover:bg-[#1F2937]'}`}>
-                    {em}
-                  </button>
+                style={{ width:'100%', background:'rgba(255,255,255,0.05)',
+                  border:'1px solid rgba(255,255,255,0.1)', borderRadius:7,
+                  padding:'6px 9px', color:'#fff', fontSize:12, outline:'none',
+                  fontFamily:'inherit', marginBottom:8, boxSizing:'border-box' }}/>
+              <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginBottom:7 }}>
+                {SUBJECT_EMOJIS.map(em=>(
+                  <button key={em} onClick={()=>setNewSubject({...newSubject, emoji:em})}
+                    style={{ background:newSubject.emoji===em?'rgba(124,58,237,0.3)':'transparent',
+                      border:'none', cursor:'pointer', borderRadius:5, padding:'2px 3px', fontSize:13 }}>{em}</button>
                 ))}
               </div>
-              <div className="flex gap-1 flex-wrap mb-2">
-                {SUBJECT_COLORS.map(color => (
-                  <button key={color} onClick={() => setNewSubject({ ...newSubject, color })}
-                    style={{ backgroundColor: color, width: 18, height: 18, borderRadius: '50%' }}
-                    className={`transition-transform ${newSubject.color === color ? 'scale-125 ring-2 ring-white dark:ring-[#141B2D]' : ''}`} />
+              <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginBottom:10 }}>
+                {SUBJECT_COLORS.map(c=>(
+                  <div key={c} onClick={()=>setNewSubject({...newSubject, color:c})}
+                    style={{ width:16, height:16, borderRadius:'50%', background:c, cursor:'pointer',
+                      outline:newSubject.color===c?`2px solid ${c}`:'none', outlineOffset:2 }}/>
                 ))}
               </div>
-              <div className="flex gap-2">
-                <button onClick={handleCreateSubject} className="flex-1 bg-indigo-600 text-white text-xs rounded-lg py-1.5 hover:bg-indigo-700">Create</button>
-                <button onClick={() => setShowNewSubject(false)} className="flex-1 bg-slate-200 dark:bg-[#1F2937] text-slate-700 dark:text-slate-300 text-xs rounded-lg py-1.5">Cancel</button>
+              <div style={{ display:'flex', gap:6 }}>
+                <button onClick={handleCreateSubject}
+                  style={{ flex:1, background:'linear-gradient(135deg,#7C3AED,#6D28D9)', color:'#fff',
+                    border:'none', borderRadius:7, padding:'6px 0', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                  Create
+                </button>
+                <button onClick={()=>setShowNewSubject(false)}
+                  style={{ flex:1, background:'rgba(255,255,255,0.07)', color:'rgba(255,255,255,0.55)',
+                    border:'none', borderRadius:7, padding:'6px 0', fontSize:11, cursor:'pointer' }}>
+                  Cancel
+                </button>
               </div>
             </div>
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-2">
-          <button
-            onClick={() => setActiveSubject(null)}
-            className={`nav-item w-full mb-0.5 ${activeSubject === null ? 'active' : ''}`}
-          >
-            <i className="ti ti-folders" style={{ fontSize: 16 }} aria-hidden="true"></i>
-            <span className="flex-1 text-left">All files</span>
-            <span className="text-[10px] text-slate-400">{documents.length}</span>
+        <div className="scroll-thin" style={{ flex:1, overflowY:'auto', padding:'8px' }}>
+          <button onClick={()=>setActiveSubject(null)}
+            className={`sb-item${activeSubject===null?' active':''}`}>
+            <span style={{ fontSize:15 }}>📁</span>
+            <span style={{ flex:1 }}>All files</span>
+            <span style={{ fontSize:10, color:'rgba(255,255,255,0.28)' }}>{documents.length}</span>
           </button>
-
-          {subjects.map(s => (
-            <div key={s.id} className="group relative mb-0.5">
-              <button
-                onClick={() => setActiveSubject(s.id)}
-                className={`nav-item w-full ${activeSubject === s.id ? 'active' : ''}`}
-              >
-                <span style={{ color: s.color }}>{s.emoji}</span>
-                <span className="flex-1 text-left text-sm truncate">{s.name}</span>
-                <span className="text-[10px] text-slate-400">{s.doc_count}</span>
+          {subjects.map(s=>(
+            <div key={s.id} style={{ position:'relative' }}
+              onMouseEnter={e=>{ const b=e.currentTarget.querySelector('.dsb'); if(b) b.style.opacity='1' }}
+              onMouseLeave={e=>{ const b=e.currentTarget.querySelector('.dsb'); if(b) b.style.opacity='0' }}>
+              <button onClick={()=>setActiveSubject(s.id)}
+                className={`sb-item${activeSubject===s.id?' active':''}`}>
+                <span style={{ color:s.color }}>{s.emoji}</span>
+                <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.name}</span>
+                <span style={{ fontSize:10, color:'rgba(255,255,255,0.28)' }}>{s.doc_count}</span>
               </button>
-              <button
-                onClick={() => handleDeleteSubject(s.id)}
-                className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all text-slate-400"
-              >
-                <i className="ti ti-x" style={{ fontSize: 11 }} aria-hidden="true"></i>
-              </button>
+              <button className="dsb" onClick={()=>handleDeleteSubject(s.id)}
+                style={{ position:'absolute', right:6, top:'50%', transform:'translateY(-50%)',
+                  background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.28)',
+                  fontSize:11, opacity:0, transition:'opacity 0.15s', padding:'2px 4px' }}>✕</button>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Main area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      {/* ── Main ── */}
+      <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
 
         {/* Top bar */}
-        <div className="px-6 py-4 flex items-center justify-between bg-white dark:bg-[#0D1220] border-b border-[#F1F5F9] dark:border-[#1F2937]">
-          <div>
-            <h1 className="text-title text-[#0F172A] dark:text-[#F1F5F9]">
-              {activeSubjectData ? `${activeSubjectData.emoji} ${activeSubjectData.name}` : 'All documents'}
-            </h1>
-            <p className="text-caption mt-0.5 text-[#94A3B8]">
-              {documents.length} document{documents.length !== 1 ? 's' : ''}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            {activeSubject && (
-              <button onClick={handleSubjectOverview} disabled={loadingOverview}
-                className="btn-secondary text-xs py-2 px-3">
-                <i className="ti ti-sparkles" style={{ fontSize: 14, color: '#6366F1' }} aria-hidden="true"></i>
-                {loadingOverview ? 'Generating...' : 'AI Overview'}
-              </button>
-            )}
-            <label className="btn-primary text-sm cursor-pointer">
-              <i className="ti ti-upload" style={{ fontSize: 16 }} aria-hidden="true"></i>
-              Upload
-              <input type="file" accept=".pdf,.docx,.txt" className="hidden"
-                onChange={e => e.target.files[0] && handleFileSelect(e.target.files[0])} />
-            </label>
+        <div style={{ padding:'18px 24px', background:'#0E0E1A',
+          borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
+          <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}>
+            <div>
+              <h1 style={{ margin:0, fontSize:22, fontWeight:800, letterSpacing:'-0.3px' }}>
+                {activeSubjectData ? `${activeSubjectData.emoji} ${activeSubjectData.name}` : 'Document Hub'}
+              </h1>
+              <p style={{ margin:'4px 0 0', fontSize:12, color:'rgba(255,255,255,0.38)' }}>
+                Upload study materials and chat with your AI tutor about them
+              </p>
+            </div>
+            <div style={{ display:'flex', gap:9, alignItems:'center' }}>
+              {activeSubject && (
+                <button onClick={handleSubjectOverview} disabled={loadingOverview}
+                  className="act-btn act-btn-ghost">
+                  {loadingOverview
+                    ? <div style={{ width:12, height:12, border:'2px solid rgba(255,255,255,0.3)',
+                        borderTopColor:'#fff', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
+                    : '✨'} AI Overview
+                </button>
+              )}
+              <label className="act-btn act-btn-primary" style={{ cursor:'pointer' }}>
+                + Upload Document
+                <input type="file" accept=".pdf,.docx,.txt" style={{ display:'none' }}
+                  onChange={e=>e.target.files[0]&&handleFileSelect(e.target.files[0])}/>
+              </label>
+            </div>
           </div>
         </div>
 
         {/* Upload progress */}
         {uploading && (
-          <div className="px-6 py-2 bg-[#EEF2FF] dark:bg-indigo-500/10 border-b border-[#C7D2FE] dark:border-indigo-500/20">
-            <div className="flex items-center gap-3">
-              <div className="w-4 h-4 border-2 border-indigo-300 border-t-indigo-600 rounded-full animate-spin flex-shrink-0" />
-              <div className="flex-1">
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-indigo-700 dark:text-indigo-300 font-medium">Uploading and processing...</span>
-                  <span className="text-indigo-500 dark:text-indigo-400">{uploadProgress}%</span>
+          <div style={{ padding:'10px 24px', background:'rgba(124,58,237,0.08)',
+            borderBottom:'1px solid rgba(124,58,237,0.2)', flexShrink:0 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+              <div style={{ width:13, height:13, border:'2px solid rgba(124,58,237,0.4)',
+                borderTopColor:'#7C3AED', borderRadius:'50%', animation:'spin 0.8s linear infinite', flexShrink:0 }}/>
+              <div style={{ flex:1 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, marginBottom:4 }}>
+                  <span style={{ color:'#C4B5FD', fontWeight:600 }}>Uploading and processing...</span>
+                  <span style={{ color:'#7C3AED', fontWeight:700 }}>{uploadProgress}%</span>
                 </div>
-                <div className="progress-bar" style={{ height: 4 }}>
-                  <div className="progress-fill progress-fill-indigo" style={{ width: `${uploadProgress}%` }} />
+                <div className="pbar-track">
+                  <div className="pbar-fill" style={{ width:`${uploadProgress}%`, background:'linear-gradient(90deg,#7C3AED,#22D3EE)' }}/>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Subject overview banner */}
+        {/* AI overview banner */}
         {subjectOverview && (
-          <div className="px-6 py-4 bg-[#EEF2FF] dark:bg-indigo-500/10 border-b border-[#C7D2FE] dark:border-indigo-500/20">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <i className="ti ti-sparkles mt-0.5" style={{ fontSize: 16, color: '#6366F1' }} aria-hidden="true"></i>
+          <div style={{ padding:'13px 24px', background:'rgba(124,58,237,0.08)',
+            borderBottom:'1px solid rgba(124,58,237,0.2)', flexShrink:0 }}>
+            <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12 }}>
+              <div style={{ display:'flex', gap:9, alignItems:'flex-start' }}>
+                <span style={{ fontSize:15, marginTop:1 }}>✨</span>
                 <div>
-                  <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 mb-1">AI Subject Overview</p>
-                  <p className="text-xs text-indigo-600 dark:text-indigo-300/80 leading-relaxed line-clamp-3">{subjectOverview.overview}</p>
+                  <div style={{ fontSize:11, fontWeight:700, color:'#C4B5FD', marginBottom:4 }}>AI Subject Overview</div>
+                  <p style={{ margin:0, fontSize:12, color:'rgba(196,181,253,0.72)', lineHeight:1.65 }}>
+                    {subjectOverview.overview}
+                  </p>
                 </div>
               </div>
-              <button onClick={() => setSubjectOverview(null)} className="text-indigo-400 hover:text-indigo-600 flex-shrink-0">
-                <i className="ti ti-x" style={{ fontSize: 14 }} aria-hidden="true"></i>
-              </button>
+              <button onClick={()=>setSubjectOverview(null)}
+                style={{ background:'none', border:'none', cursor:'pointer',
+                  color:'rgba(255,255,255,0.3)', fontSize:13, flexShrink:0, padding:2 }}>✕</button>
             </div>
           </div>
         )}
 
+        {/* Error */}
         {error && (
-          <div className="px-6 py-3 bg-red-50 dark:bg-red-500/10 border-b border-red-200 dark:border-red-500/20 text-sm text-red-600 dark:text-red-300">
+          <div style={{ padding:'9px 24px', background:'rgba(239,68,68,0.08)',
+            borderBottom:'1px solid rgba(239,68,68,0.2)', fontSize:12, color:'#FCA5A5', flexShrink:0 }}>
             {error}
           </div>
         )}
 
-        <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
+        {/* Body */}
+        <div style={{ flex:1, overflow:'hidden', display:'flex' }}>
 
-          {/* Document grid */}
-          <div className={`overflow-y-auto transition-all duration-300 ${selectedDoc ? 'lg:w-[420px] lg:flex-shrink-0 max-h-[45%] lg:max-h-none' : 'flex-1'}`}>
+          {/* Document list */}
+          <div className="scroll-thin"
+            style={{ overflowY:'auto', transition:'width 0.25s',
+              width: selectedDoc ? '52%' : '100%', flexShrink:0 }}>
 
-            {/* Drop zone (when no docs) */}
-            {!loading && documents.length === 0 && (
-              <div
-                onDrop={handleDrop}
-                onDragOver={e => { e.preventDefault(); setDragOver(true) }}
-                onDragLeave={() => setDragOver(false)}
-                className="m-6 flex flex-col items-center justify-center rounded-2xl py-16 text-center transition-colors"
-                style={{
-                  border: `2px dashed ${dragOver ? '#6366F1' : 'var(--drop-border)'}`,
-                  background: dragOver ? 'rgba(99,102,241,0.06)' : 'var(--drop-bg)',
-                }}
-              >
-                <style>{`:root{--drop-border:#E2E8F0;--drop-bg:#F8FAFC}.dark{--drop-border:#1F2937;--drop-bg:#141B2D}`}</style>
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 bg-[#EEF2FF] dark:bg-indigo-500/15">
-                  <i className="ti ti-cloud-upload" style={{ fontSize: 26, color: '#6366F1' }} aria-hidden="true"></i>
-                </div>
-                <p className="text-sm font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">Drop files here</p>
-                <p className="text-caption mb-4 text-[#94A3B8]">PDF, DOCX, or TXT — up to 50MB</p>
-                <label className="btn-primary text-sm cursor-pointer">
-                  <i className="ti ti-upload" style={{ fontSize: 15 }} aria-hidden="true"></i>
+            {/* Drop zone */}
+            {!loading && documents.length===0 && (
+              <div onDrop={handleDrop}
+                onDragOver={e=>{e.preventDefault();setDragOver(true)}}
+                onDragLeave={()=>setDragOver(false)}
+                style={{ margin:'20px 24px', borderRadius:18, padding:'56px 32px', textAlign:'center',
+                  border:`2px dashed ${dragOver?'#7C3AED':'rgba(255,255,255,0.1)'}`,
+                  background: dragOver?'rgba(124,58,237,0.07)':'rgba(255,255,255,0.02)',
+                  transition:'all 0.2s' }}>
+                <div style={{ width:56, height:56, borderRadius:18, background:'rgba(124,58,237,0.15)',
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  fontSize:26, margin:'0 auto 16px' }}>📤</div>
+                <p style={{ fontSize:17, fontWeight:700, margin:'0 0 7px' }}>Drop your documents here</p>
+                <p style={{ fontSize:12, color:'rgba(255,255,255,0.38)', margin:'0 0 22px' }}>
+                  PDF, DOCX, TXT · Up to 50MB each
+                </p>
+                <label className="act-btn act-btn-primary" style={{ cursor:'pointer' }}>
                   Browse files
-                  <input type="file" accept=".pdf,.docx,.txt" className="hidden"
-                    onChange={e => e.target.files[0] && handleFileSelect(e.target.files[0])} />
+                  <input type="file" accept=".pdf,.docx,.txt" style={{ display:'none' }}
+                    onChange={e=>e.target.files[0]&&handleFileSelect(e.target.files[0])}/>
                 </label>
               </div>
             )}
 
             {loading && (
-              <div className="flex justify-center py-20">
-                <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+              <div style={{ display:'flex', justifyContent:'center', padding:60 }}>
+                <div style={{ width:24, height:24, border:'3px solid #7C3AED',
+                  borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
               </div>
             )}
 
-            {!loading && documents.length > 0 && (
-              <div className="p-6">
-                <div className={`grid gap-3 ${selectedDoc ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
-                  {documents.map(doc => (
-                    <div
-                      key={doc.id}
-                      onClick={() => handleSelectDoc(doc)}
-                      className={`p-4 rounded-2xl border cursor-pointer group transition-all bg-white dark:bg-[#141B2D] shadow-sm
-                        ${selectedDoc?.id === doc.id
-                          ? 'border-indigo-300 dark:border-indigo-500/50 ring-1 ring-indigo-200 dark:ring-indigo-500/30'
-                          : 'border-[#E2E8F0] dark:border-[#1F2937]'}`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                          style={{ background: doc.file_type === 'pdf' ? 'rgba(239,68,68,0.12)' : doc.file_type === 'docx' ? 'rgba(59,130,246,0.12)' : 'rgba(16,185,129,0.12)' }}>
-                          <i className="ti ti-file-text" style={{ fontSize: 18, color: doc.file_type === 'pdf' ? '#EF4444' : doc.file_type === 'docx' ? '#3B82F6' : '#10B981' }} aria-hidden="true"></i>
+            {/* ── Figma-style document rows ── */}
+            {!loading && documents.length>0 && (
+              <div style={{ padding:'20px 24px', display:'flex', flexDirection:'column', gap:10 }}>
+                {documents.map(doc=>{
+                  const fc  = fileStyle(doc.file_type)
+                  const pct = readPct(doc)
+                  const isSelected = selectedDoc?.id===doc.id
+                  return (
+                    <div key={doc.id} className={`doc-row fade-in${isSelected?' selected':''}`}>
+
+                      {/* Coloured file icon */}
+                      <div style={{ width:44, height:44, borderRadius:13, flexShrink:0,
+                        display:'flex', alignItems:'center', justifyContent:'center',
+                        fontSize:22, background:fc.bg, marginRight:16 }}>📄</div>
+
+                      {/* Doc info + progress bar */}
+                      <div style={{ flex:1, minWidth:0, marginRight:16 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3 }}>
+                          <p style={{ margin:0, fontSize:14, fontWeight:700,
+                            overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+                            color:'rgba(255,255,255,0.92)' }}>{doc.original_name}</p>
+                          {doc.summary && (
+                            <span style={{ padding:'2px 7px', borderRadius:20, fontSize:10, fontWeight:700,
+                              background:'rgba(16,185,129,0.18)', color:'#6EE7B7', flexShrink:0 }}>Summary</span>
+                          )}
+                          {doc.formula_sheet && (
+                            <span style={{ padding:'2px 7px', borderRadius:20, fontSize:10, fontWeight:700,
+                              background:'rgba(245,158,11,0.18)', color:'#FCD34D', flexShrink:0 }}>Formulas</span>
+                          )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-[#0F172A] dark:text-[#F1F5F9] truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{doc.original_name}</p>
-                          <p className="text-caption mt-0.5 text-[#94A3B8]">
-                            {(doc.file_size / 1024).toFixed(0)} KB · {doc.chunk_count} chunks
-                          </p>
-                          <div className="flex gap-1.5 mt-2">
-                            {doc.summary && <span className="badge badge-green">Summary</span>}
-                            {doc.formula_sheet && <span className="badge badge-amber">Formulas</span>}
+                        <p style={{ margin:'0 0 10px', fontSize:11, color:'rgba(255,255,255,0.35)' }}>
+                          {doc.chunk_count} chunks
+                          {activeSubject===null && doc.subject_id &&
+                            (() => { const s=subjects.find(x=>x.id===doc.subject_id); return s?` · ${s.emoji} ${s.name}`:'' })()
+                          }
+                          &nbsp;·&nbsp;{doc.file_type?.toUpperCase()}
+                        </p>
+                        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                          <div className="pbar-track" style={{ flex:1 }}>
+                            <div className="pbar-fill"
+                              style={{ width:`${pct}%`, background:`linear-gradient(90deg,${fc.color},rgba(255,255,255,0.25))` }}/>
                           </div>
+                          <span style={{ fontSize:11, fontWeight:700, color:fc.color, flexShrink:0 }}>{pct}%</span>
                         </div>
-                        <button
-                          onClick={e => { e.stopPropagation(); handleDeleteDocument(doc.id) }}
-                          className="opacity-0 group-hover:opacity-100 hover:text-red-500 text-slate-400 transition-all flex-shrink-0 mt-0.5"
-                        >
-                          <i className="ti ti-trash" style={{ fontSize: 14 }} aria-hidden="true"></i>
-                        </button>
+                        {activeSubject===null && (
+                          <select value={doc.subject_id||''}
+                            onChange={e=>{e.stopPropagation();handleAssignSubject(doc.id,e.target.value)}}
+                            onClick={e=>e.stopPropagation()}
+                            style={{ marginTop:9, background:'rgba(255,255,255,0.04)',
+                              border:'1px solid rgba(255,255,255,0.08)', borderRadius:7,
+                              padding:'4px 8px', color:'rgba(255,255,255,0.5)',
+                              fontSize:11, outline:'none', cursor:'pointer' }}>
+                            <option value="">No subject</option>
+                            {subjects.map(s=><option key={s.id} value={s.id}>{s.emoji} {s.name}</option>)}
+                          </select>
+                        )}
                       </div>
 
-                      {activeSubject === null && (
-                        <select
-                          value={doc.subject_id || ''}
-                          onChange={e => { e.stopPropagation(); handleAssignSubject(doc.id, e.target.value) }}
-                          onClick={e => e.stopPropagation()}
-                          className="mt-3 w-full rounded-lg px-2 py-1 text-[11px] outline-none border
-                            bg-[#F8FAFC] dark:bg-[#0B0F1A] border-[#E2E8F0] dark:border-[#1F2937]
-                            text-[#0F172A] dark:text-[#F1F5F9]"
-                        >
-                          <option value="">No subject</option>
-                          {subjects.map(s => <option key={s.id} value={s.id}>{s.emoji} {s.name}</option>)}
-                        </select>
-                      )}
+                      {/* Action buttons */}
+                      <div style={{ display:'flex', gap:7, alignItems:'center', flexShrink:0 }}>
+                        <button onClick={()=>navigate('/chat',{state:{documentId:doc.id}})}
+                          className="act-btn act-btn-ghost">💬 Chat</button>
+                        <button onClick={()=>navigate(`/reader/${doc.id}`, {
+                          state: { page: progressMap[doc.id]?.last_page || 1 }
+                        })}
+                          className="act-btn act-btn-primary">📖 Reader</button>
+                        <button onClick={()=>handleSelectDoc(doc)}
+                          className="act-btn act-btn-purple">
+                          ▷ {isSelected ? 'Close' : 'Resume'}
+                        </button>
+                        <button className="del-btn" onClick={()=>handleDeleteDocument(doc.id)}>🗑</button>
+                      </div>
                     </div>
-                  ))}
-                </div>
+                  )
+                })}
               </div>
             )}
           </div>
 
-          {/* Slide-over preview panel */}
+          {/* ── Right: Preview panel ── */}
           {selectedDoc && (
-            <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-[#0D1220] border-l border-[#F1F5F9] dark:border-[#1F2937]">
+            <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden',
+              background:'#0E0E1A', borderLeft:'1px solid rgba(255,255,255,0.06)' }}>
 
-              {/* Panel header */}
-              <div className="px-6 py-4 flex items-center justify-between border-b border-[#F1F5F9] dark:border-[#1F2937]">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: selectedDoc.file_type === 'pdf' ? 'rgba(239,68,68,0.12)' : 'rgba(59,130,246,0.12)' }}>
-                    <i className="ti ti-file-text" style={{ fontSize: 16, color: selectedDoc.file_type === 'pdf' ? '#EF4444' : '#3B82F6' }} aria-hidden="true"></i>
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-[#0F172A] dark:text-[#F1F5F9] truncate">{selectedDoc.original_name}</p>
-                    <p className="text-caption text-[#94A3B8]">
-                      {(selectedDoc.file_size / 1024).toFixed(0)} KB · {selectedDoc.chunk_count} chunks · {selectedDoc.file_type.toUpperCase()}
+              <div style={{ padding:'14px 18px', borderBottom:'1px solid rgba(255,255,255,0.06)',
+                display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
+                  <div style={{ width:36, height:36, borderRadius:10, flexShrink:0,
+                    display:'flex', alignItems:'center', justifyContent:'center', fontSize:18,
+                    background: fileStyle(selectedDoc.file_type).bg }}>📄</div>
+                  <div style={{ minWidth:0 }}>
+                    <p style={{ margin:0, fontSize:13, fontWeight:600, overflow:'hidden',
+                      textOverflow:'ellipsis', whiteSpace:'nowrap', color:'rgba(255,255,255,0.9)' }}>
+                      {selectedDoc.original_name}
+                    </p>
+                    <p style={{ margin:'2px 0 0', fontSize:11, color:'rgba(255,255,255,0.35)' }}>
+                      {(selectedDoc.file_size/1024).toFixed(0)} KB · {selectedDoc.chunk_count} chunks · {selectedDoc.file_type?.toUpperCase()}
                     </p>
                   </div>
                 </div>
-                <button onClick={() => setSelectedDoc(null)}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-[#1F2937] transition-colors flex-shrink-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
-                  <i className="ti ti-x" style={{ fontSize: 14 }} aria-hidden="true"></i>
-                </button>
+                <button onClick={()=>setSelectedDoc(null)}
+                  style={{ width:28, height:28, borderRadius:8, background:'rgba(255,255,255,0.06)',
+                    border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)',
+                    display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, flexShrink:0 }}>✕</button>
               </div>
 
-              {/* Tabs */}
-              <div className="flex px-6 py-0 border-b border-[#F1F5F9] dark:border-[#1F2937]">
-                {[
-                  { id: 'summary', label: 'Summary', icon: 'ti-file-description' },
-                  { id: 'formulas', label: 'Formulas', icon: 'ti-math-function' },
-                ].map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => { setActiveTab(tab.id); tab.id === 'summary' ? handleGetSummary() : handleGetFormulas() }}
-                    className="flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-px"
-                    style={{
-                      color: activeTab === tab.id ? '#6366F1' : '#94A3B8',
-                      borderBottomColor: activeTab === tab.id ? '#6366F1' : 'transparent',
-                    }}
-                  >
-                    <i className={`ti ${tab.icon}`} style={{ fontSize: 15 }} aria-hidden="true"></i>
+              <div style={{ padding:'10px 16px', borderBottom:'1px solid rgba(255,255,255,0.06)',
+                display:'flex', gap:7, flexWrap:'wrap', flexShrink:0 }}>
+                <button onClick={()=>navigate(`/reader/${selectedDoc.id}`, {
+                  state: { page: progressMap[selectedDoc.id]?.last_page || 1 }
+                })}
+                  className="act-btn act-btn-primary" style={{ fontSize:11 }}>📖 Open in Reader</button>
+                <button onClick={()=>navigate('/chat',{state:{documentId:selectedDoc.id}})}
+                  className="act-btn act-btn-ghost" style={{ fontSize:11 }}>💬 Ask about this</button>
+                <button onClick={()=>navigate('/quiz',{state:{documentId:selectedDoc.id}})}
+                  className="act-btn act-btn-ghost" style={{ fontSize:11 }}>📝 Quiz from this</button>
+                <button onClick={()=>navigate('/flashcards',{state:{documentId:selectedDoc.id}})}
+                  className="act-btn act-btn-ghost" style={{ fontSize:11 }}>🃏 Cards from this</button>
+              </div>
+
+              <div style={{ display:'flex', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
+                {[{id:'summary',label:'📋 Summary'},{id:'formulas',label:'🧮 Formulas'}].map(tab=>(
+                  <button key={tab.id}
+                    onClick={()=>{ setActiveTab(tab.id); tab.id==='summary'?handleGetSummary():handleGetFormulas() }}
+                    className="tab-btn"
+                    style={{ color:activeTab===tab.id?'#C4B5FD':'rgba(255,255,255,0.38)',
+                      borderBottomColor:activeTab===tab.id?'#7C3AED':'transparent' }}>
                     {tab.label}
                   </button>
                 ))}
               </div>
 
-              <div className="px-6 py-3 flex flex-wrap gap-2 border-b border-[#F1F5F9] dark:border-[#1F2937]">
-                <button
-                  onClick={() => navigate('/chat', { state: { documentId: selectedDoc.id } })}
-                  className="btn-secondary text-xs py-2 px-3">
-                  <i className="ti ti-message-circle" style={{ fontSize: 13 }} aria-hidden="true"></i>
-                  Ask about this
-                </button>
-                <button
-                  onClick={() => navigate('/quiz', { state: { documentId: selectedDoc.id } })}
-                  className="btn-secondary text-xs py-2 px-3">
-                  <i className="ti ti-pencil" style={{ fontSize: 13 }} aria-hidden="true"></i>
-                  Quiz from this
-                </button>
-                <button
-                  onClick={() => navigate('/flashcards', { state: { documentId: selectedDoc.id } })}
-                  className="btn-secondary text-xs py-2 px-3">
-                  <i className="ti ti-cards" style={{ fontSize: 13 }} aria-hidden="true"></i>
-                  Cards from this
-                </button>
-              </div>
-
-              {/* Panel content */}
-              <div className="flex-1 overflow-y-auto p-6">
-                {activeTab === 'summary' && (
-                  <div>
-                    {loadingSummary ? (
-                      <div className="flex flex-col items-center py-16">
-                        <div className="w-8 h-8 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-3" />
-                        <p className="text-sm text-slate-500">Generating summary with AI...</p>
+              <div className="scroll-thin" style={{ flex:1, overflowY:'auto', padding:20 }}>
+                {activeTab==='summary' && (
+                  loadingSummary ? (
+                    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:48 }}>
+                      <div style={{ width:26, height:26, border:'3px solid rgba(124,58,237,0.3)',
+                        borderTopColor:'#7C3AED', borderRadius:'50%', animation:'spin 0.8s linear infinite', marginBottom:12 }}/>
+                      <p style={{ fontSize:12, color:'rgba(255,255,255,0.38)', margin:0 }}>Generating summary with AI...</p>
+                    </div>
+                  ) : docSummary ? (
+                    <div>
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+                        <span style={{ padding:'3px 10px', borderRadius:20, fontSize:10, fontWeight:700,
+                          background:'rgba(16,185,129,0.2)', color:'#6EE7B7' }}>✓ AI Generated</span>
+                        <button onClick={()=>exportSummaryPDF({summary:docSummary,documentName:selectedDoc.original_name})}
+                          className="act-btn act-btn-ghost" style={{ fontSize:11 }}>↓ Export PDF</button>
                       </div>
-                    ) : docSummary ? (
-                      <div>
-                        <div className="flex items-center justify-between mb-4">
-                          <span className="badge badge-green">AI Generated</span>
-                          <button
-                            onClick={() => exportSummaryPDF({ summary: docSummary, documentName: selectedDoc.original_name })}
-                            className="btn-secondary text-xs py-1.5 px-3">
-                            <i className="ti ti-download" style={{ fontSize: 13 }} aria-hidden="true"></i>
-                            Export PDF
-                          </button>
-                        </div>
-                        <div className="text-sm leading-relaxed whitespace-pre-wrap text-[#374151] dark:text-[#CBD5E1]">
-                          {docSummary}
-                        </div>
+                      <div style={{ fontSize:13, lineHeight:1.78, whiteSpace:'pre-wrap', color:'rgba(255,255,255,0.72)' }}>
+                        {docSummary}
                       </div>
-                    ) : (
-                      <div className="flex flex-col items-center py-16 text-center">
-                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 bg-[#EEF2FF] dark:bg-indigo-500/15">
-                          <i className="ti ti-file-description" style={{ fontSize: 22, color: '#6366F1' }} aria-hidden="true"></i>
-                        </div>
-                        <p className="text-sm font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">No summary yet</p>
-                        <p className="text-caption mb-4 text-[#94A3B8]">Generate an AI summary of this document</p>
-                        <button onClick={handleGetSummary} className="btn-primary text-sm">
-                          <i className="ti ti-sparkles" style={{ fontSize: 15 }} aria-hidden="true"></i>
-                          Generate summary
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center', padding:'48px 24px' }}>
+                      <div style={{ width:48, height:48, borderRadius:14, background:'rgba(124,58,237,0.14)',
+                        display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, marginBottom:14 }}>📋</div>
+                      <p style={{ fontSize:14, fontWeight:700, margin:'0 0 6px' }}>No summary yet</p>
+                      <p style={{ fontSize:12, color:'rgba(255,255,255,0.38)', margin:'0 0 18px' }}>Generate an AI summary of this document</p>
+                      <button onClick={handleGetSummary} className="act-btn act-btn-primary">✨ Generate summary</button>
+                    </div>
+                  )
                 )}
-
-                {activeTab === 'formulas' && (
-                  <div>
-                    {loadingFormulas ? (
-                      <div className="flex flex-col items-center py-16">
-                        <div className="w-8 h-8 border-2 border-cyan-200 border-t-cyan-600 rounded-full animate-spin mb-3" />
-                        <p className="text-sm text-slate-500">Extracting formulas with AI...</p>
+                {activeTab==='formulas' && (
+                  loadingFormulas ? (
+                    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:48 }}>
+                      <div style={{ width:26, height:26, border:'3px solid rgba(34,211,238,0.3)',
+                        borderTopColor:'#22D3EE', borderRadius:'50%', animation:'spin 0.8s linear infinite', marginBottom:12 }}/>
+                      <p style={{ fontSize:12, color:'rgba(255,255,255,0.38)', margin:0 }}>Extracting formulas with AI...</p>
+                    </div>
+                  ) : docFormulas ? (
+                    <div>
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+                        <span style={{ padding:'3px 10px', borderRadius:20, fontSize:10, fontWeight:700,
+                          background:'rgba(245,158,11,0.2)', color:'#FCD34D' }}>Formula sheet</span>
+                        <button onClick={()=>exportFormulaSheetPDF({formulas:docFormulas,documentName:selectedDoc.original_name})}
+                          className="act-btn act-btn-ghost" style={{ fontSize:11 }}>↓ Export PDF</button>
                       </div>
-                    ) : docFormulas ? (
-                      <div>
-                        <div className="flex items-center justify-between mb-4">
-                          <span className="badge badge-amber">Formula sheet</span>
-                          <button
-                            onClick={() => exportFormulaSheetPDF({ formulas: docFormulas, documentName: selectedDoc.original_name })}
-                            className="btn-secondary text-xs py-1.5 px-3">
-                            <i className="ti ti-download" style={{ fontSize: 13 }} aria-hidden="true"></i>
-                            Export PDF
-                          </button>
-                        </div>
-                        <div className="text-sm leading-relaxed whitespace-pre-wrap font-mono text-[#374151] dark:text-[#CBD5E1]"
-                          style={{ fontSize: 13 }}>
-                          {docFormulas}
-                        </div>
+                      <div style={{ fontSize:12, lineHeight:1.78, whiteSpace:'pre-wrap', fontFamily:'monospace',
+                        color:'rgba(255,255,255,0.72)', background:'rgba(255,255,255,0.03)',
+                        borderRadius:10, padding:'14px 16px', border:'1px solid rgba(255,255,255,0.07)' }}>
+                        {docFormulas}
                       </div>
-                    ) : (
-                      <div className="flex flex-col items-center py-16 text-center">
-                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 bg-[#ECFEFF] dark:bg-cyan-500/15">
-                          <i className="ti ti-math-function" style={{ fontSize: 22, color: '#22D3EE' }} aria-hidden="true"></i>
-                        </div>
-                        <p className="text-sm font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">No formula sheet yet</p>
-                        <p className="text-caption mb-4 text-[#94A3B8]">Extract all formulas from this document</p>
-                        <button onClick={handleGetFormulas} className="btn-primary text-sm">
-                          <i className="ti ti-sparkles" style={{ fontSize: 15 }} aria-hidden="true"></i>
-                          Extract formulas
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center', padding:'48px 24px' }}>
+                      <div style={{ width:48, height:48, borderRadius:14, background:'rgba(34,211,238,0.1)',
+                        display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, marginBottom:14 }}>🧮</div>
+                      <p style={{ fontSize:14, fontWeight:700, margin:'0 0 6px' }}>No formula sheet yet</p>
+                      <p style={{ fontSize:12, color:'rgba(255,255,255,0.38)', margin:'0 0 18px' }}>Extract all formulas and equations from this document</p>
+                      <button onClick={handleGetFormulas} className="act-btn act-btn-primary">✨ Extract formulas</button>
+                    </div>
+                  )
                 )}
               </div>
             </div>

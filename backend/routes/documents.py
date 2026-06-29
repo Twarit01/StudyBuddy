@@ -10,6 +10,8 @@ from core.database import get_db
 from core.dependencies import get_current_user
 from models.user import User
 from models.document import Document
+from models.reading_progress import ReadingProgress
+from models.document_note import DocumentNote
 from models.subject import Subject
 from services.document_processor import validate_file, save_uploaded_file, process_document
 from services.rag import store_document_chunks, delete_document_chunks
@@ -360,6 +362,8 @@ def delete_document(
         raise HTTPException(status_code=404, detail="Document not found")
 
     delete_document_chunks(user_id=current_user.id, document_id=document_id)
+    db.query(ReadingProgress).filter(ReadingProgress.document_id == document_id).delete()
+    db.query(DocumentNote).filter(DocumentNote.document_id == document_id).delete()
     _delete_uploaded_file(document.filename)
     db.delete(document)
     db.commit()

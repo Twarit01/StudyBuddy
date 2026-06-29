@@ -123,6 +123,7 @@ def retrieve_relevant_chunks(
 
         chunks.append({
             "text": results["documents"][0][i],
+            "document_id": results["metadatas"][0][i].get("document_id"),
             "document_name": results["metadatas"][0][i]["document_name"],
             "page_num": results["metadatas"][0][i]["page_num"],
             "chunk_index": results["metadatas"][0][i]["chunk_index"],

@@ -7,6 +7,38 @@ from services.rag import retrieve_relevant_chunks
 
 # ── Flashcard generation ──────────────────────────────────────────────────────
 
+def generate_flashcards_from_context(context: str, count: int = 10, topic: str = None) -> list[dict]:
+    """Generate flashcards from explicit text context (used by reader selection)."""
+    prompt = f"""Generate {count} flashcards from this engineering study material.
+Focus on key concepts, definitions, formulas, and important principles.
+
+STUDY MATERIAL:
+{context}
+
+Return ONLY a valid JSON array. No markdown, no explanation.
+Format:
+[
+  {{
+    "front": "What is [concept]? or Define [term]",
+    "back": "Clear concise answer or definition",
+    "topic": "{topic or 'Selected passage'}",
+    "hint": "optional memory hint"
+  }}
+]"""
+
+    response = generate_text(prompt)
+    cleaned = re.sub(r"```json\s*|\s*```", "", response).strip()
+    cleaned = re.sub(r"```\s*|\s*```", "", cleaned).strip()
+
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        match = re.search(r"\[.*\]", cleaned, re.DOTALL)
+        if match:
+            return json.loads(match.group())
+        raise ValueError("Could not parse flashcards from response")
+
+
 def generate_flashcards(
     user_id: int,
     topic: str = None,
@@ -33,39 +65,7 @@ def generate_flashcards(
     else:
         context = f"Use general engineering knowledge about {topic or 'core engineering concepts'}."
 
-    prompt = f"""Generate {count} flashcards from this engineering study material.
-Focus on key concepts, definitions, formulas, and important principles.
-
-STUDY MATERIAL:
-{context}
-
-Return ONLY a valid JSON array. No markdown, no explanation.
-Format:
-[
-  {{
-    "front": "What is [concept]? or Define [term]",
-    "back": "Clear concise answer or definition",
-    "topic": "specific topic name",
-    "hint": "optional memory hint"
-  }}
-]"""
-
-    response = generate_text(prompt)
-
-    # Parse JSON
-    cleaned = re.sub(r"```json\s*|\s*```", "", response).strip()
-    cleaned = re.sub(r"```\s*|\s*```", "", cleaned).strip()
-
-    try:
-        cards = json.loads(cleaned)
-    except json.JSONDecodeError:
-        match = re.search(r"\[.*\]", cleaned, re.DOTALL)
-        if match:
-            cards = json.loads(match.group())
-        else:
-            raise ValueError("Could not parse flashcards from response")
-
-    return cards
+    return generate_flashcards_from_context(context, count=count, topic=topic)
 
 
 # ── SM-2 Algorithm ────────────────────────────────────────────────────────────
