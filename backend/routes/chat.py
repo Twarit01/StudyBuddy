@@ -13,6 +13,7 @@ from models.user import User
 from models.chat_session import ChatSession, Message
 from services.rag import retrieve_relevant_chunks, build_rag_prompt
 from services.gemini import generate_with_history, assess_confidence
+from services.xp_service import award_xp, update_streak
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -176,6 +177,13 @@ def ask_question(
     db.add(assistant_message)
     db.commit()
     db.refresh(assistant_message)
+
+    # ── Award XP ──
+    try:
+        award_xp(db, current_user, "chat_question_asked")
+        update_streak(db, current_user)
+    except Exception:
+        pass  # XP failure should never block a successful chat response
 
     return AskResponse(
         session_id=session.id,

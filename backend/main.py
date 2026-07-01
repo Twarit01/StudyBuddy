@@ -37,6 +37,7 @@ from routes.flashcards import router as flashcards_router
 from routes.progress   import router as progress_router
 from routes.subjects   import router as subjects_router
 from routes.reader     import router as reader_router
+from routes.xp         import router as xp_router
 
 app.include_router(auth_router,       prefix="/api/auth",       tags=["Auth"])
 app.include_router(subjects_router,   prefix="/api/subjects",   tags=["Subjects"])
@@ -46,6 +47,7 @@ app.include_router(chat_router,       prefix="/api/chat",       tags=["Chat"])
 app.include_router(quiz_router,       prefix="/api/quiz",       tags=["Quiz"])
 app.include_router(flashcards_router, prefix="/api/flashcards", tags=["Flashcards"])
 app.include_router(progress_router,   prefix="/api/progress",   tags=["Progress"])
+app.include_router(xp_router,         prefix="/api/xp",         tags=["XP"])
 
 
 @app.get("/api/health")

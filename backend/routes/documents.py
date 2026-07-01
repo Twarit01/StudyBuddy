@@ -16,6 +16,7 @@ from models.subject import Subject
 from services.document_processor import validate_file, save_uploaded_file, process_document
 from services.rag import store_document_chunks, delete_document_chunks
 from services.document_ai import generate_document_summary, generate_formula_sheet
+from services.xp_service import award_xp, update_streak
 
 router = APIRouter()
 
@@ -152,9 +153,14 @@ async def upload_document(
             db.commit()
         raise _ai_failure("Failed to process document. Please try again later.")
 
+    # ── Award XP ──
+    try:
+        award_xp(db, current_user, "document_uploaded")
+        update_streak(db, current_user)
+    except Exception:
+        pass  # XP failure should never block a successful upload
+
     return document
-
-
 @router.get("/", response_model=List[DocumentResponse])
 def list_documents(
     subject_id: Optional[int] = Query(None),

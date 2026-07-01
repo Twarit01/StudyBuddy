@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { generateQuiz, evaluateAnswer, getQuizMistakes, resolveQuizMistake, submitQuiz } from '../api/quiz'
 import { listDocuments } from '../api/documents'
 import { exportQuizPDF } from '../utils/exportPDF'
+import { useXP } from '../context/XPContext'
 
 const GENERIC_TOPICS = [
   'Mathematics', 'Physics', 'Chemistry', 'Biology',
@@ -29,6 +30,7 @@ const extractTopicsFromDoc = (doc) => {
 
 export default function Quiz() {
   const location = useLocation()
+  const { showXPEvents } = useXP()
 
   const [step, setStep]                       = useState('pick')
   const [documents, setDocuments]             = useState([])
@@ -221,7 +223,7 @@ export default function Quiz() {
         if (q.type === 'mcq' && answers[i] === q.correct_answer) correct++
         if ((q.type === 'short' || q.type === 'formula') && resolved[i]?.is_correct) correct++
       })
-      await submitQuiz({
+      const result = await submitQuiz({
         topic: config.topic || 'General', quiz_type: config.quizType,
         difficulty: config.difficulty, total_questions: questions.length,
         correct_answers: correct, questions_data: JSON.stringify(questions),
@@ -231,6 +233,7 @@ export default function Quiz() {
       setScore({ correct, total: questions.length, timeTaken, auto })
       setSubmitted(true)
       loadMistakes()
+      if (result?.xp_events?.length) showXPEvents(result.xp_events)
     } catch (err) {
       setError(err.response?.data?.detail || 'Could not submit quiz.')
       if (config.timedMode && !submitted && timeLeft > 0) setTimerActive(true)

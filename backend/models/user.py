@@ -13,9 +13,17 @@ class User(Base):
     is_active       = Column(Boolean, default=True)
     created_at      = Column(DateTime, default=datetime.utcnow)
 
+    # ── XP / Gamification ──
+    total_xp        = Column(Integer, default=0, nullable=False)
+    level           = Column(Integer, default=1, nullable=False)
+    current_streak  = Column(Integer, default=0, nullable=False)
+    longest_streak  = Column(Integer, default=0, nullable=False)
+    last_activity_date = Column(DateTime, nullable=True)
+
     # Relationships
-    documents    = relationship("Document",    back_populates="owner", cascade="all, delete-orphan")
-    chat_sessions= relationship("ChatSession", back_populates="owner", cascade="all, delete-orphan")
-    quiz_attempts= relationship("QuizAttempt", back_populates="owner", cascade="all, delete-orphan")
-    flashcards   = relationship("Flashcard",   back_populates="owner", cascade="all, delete-orphan")
-    subjects     = relationship("Subject",     back_populates="owner", cascade="all, delete-orphan")
+    documents     = relationship("Document",    back_populates="owner", cascade="all, delete-orphan")
+    chat_sessions = relationship("ChatSession", back_populates="owner", cascade="all, delete-orphan")
+    quiz_attempts = relationship("QuizAttempt", back_populates="owner", cascade="all, delete-orphan")
+    flashcards    = relationship("Flashcard",   back_populates="owner", cascade="all, delete-orphan")
+    subjects      = relationship("Subject",     back_populates="owner", cascade="all, delete-orphan")
+    xp_events     = relationship("XPEvent",     back_populates="owner", cascade="all, delete-orphan")

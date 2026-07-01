@@ -7,3 +7,4 @@ from .quiz_mistake import QuizMistake
 from .flashcard import Flashcard
 from .reading_progress import ReadingProgress
 from .document_note import DocumentNote
+from .xp_event import XPEvent

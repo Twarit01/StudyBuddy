@@ -15,6 +15,7 @@ from services.flashcard_generator import (
     get_next_review_date,
     get_due_cards_count
 )
+from services.xp_service import award_xp, update_streak
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -44,6 +45,7 @@ class FlashcardResponse(BaseModel):
     times_correct: int
     times_wrong: int
     created_at: datetime
+    xp_awarded: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -202,7 +204,22 @@ def review_flashcard(
     db.commit()
     db.refresh(card)
 
-    return card
+    # ── Award XP ──
+    total_xp = 0
+    xp_result = award_xp(db, current_user, "flashcard_reviewed")
+    total_xp += xp_result.get("awarded", 0)
+
+    # Bonus XP when a card becomes "mastered" (long interval = well retained)
+    if new_interval >= 21 and card.repetitions >= 3:
+        mastery_result = award_xp(db, current_user, "flashcard_mastered")
+        total_xp += mastery_result.get("awarded", 0)
+
+    update_streak(db, current_user)
+
+    response = FlashcardResponse.model_validate(card)
+    response.xp_awarded = total_xp
+
+    return response
 
 
 @router.get("/stats")

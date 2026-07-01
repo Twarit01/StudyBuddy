@@ -12,6 +12,7 @@ from models.user import User
 from models.quiz_attempt import QuizAttempt
 from models.quiz_mistake import QuizMistake
 from services.quiz_generator import generate_quiz, evaluate_short_answer
+from services.xp_service import award_xp, update_streak
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -68,6 +69,19 @@ class QuizAttemptResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class XPAwardInfo(BaseModel):
+    awarded: int
+    reason: str
+    label: Optional[str] = None
+    total_xp: Optional[int] = None
+    level: Optional[int] = None
+    leveled_up: Optional[bool] = None
+
+class QuizSubmitResponse(QuizAttemptResponse):
+    xp_events: List[XPAwardInfo] = Field(default_factory=list)
+    total_xp_earned: int = 0
+    current_streak: Optional[int] = None
+    leveled_up: bool = False
 
 class QuizMistakeResponse(BaseModel):
     id: int
@@ -171,7 +185,7 @@ def evaluate_answer(
     return result
 
 
-@router.post("/submit", response_model=QuizAttemptResponse)
+@router.post("/submit", response_model=QuizSubmitResponse)
 def submit_quiz(
     request: SubmitQuizRequest,
     db: Session = Depends(get_db),
@@ -180,6 +194,7 @@ def submit_quiz(
     """
     Save a completed quiz attempt to the database.
     Called after student finishes a quiz — stores score for progress tracking.
+    Also awards XP for completion, score bonuses, and daily streak.
     """
     if request.total_questions < 1:
         raise HTTPException(
@@ -230,7 +245,27 @@ def submit_quiz(
     if request.mistakes:
         db.commit()
 
-    return attempt
+    # ── Award XP ──
+    xp_events = []
+    xp_events.append(award_xp(db, current_user, "quiz_completed"))
+    if score_percentage == 100:
+        xp_events.append(award_xp(db, current_user, "quiz_perfect_score"))
+    elif score_percentage >= 80:
+        xp_events.append(award_xp(db, current_user, "quiz_good_score"))
+
+    streak_info = update_streak(db, current_user)
+    xp_events.extend(streak_info.get("xp_events", []))
+
+    total_xp_earned = sum(e.get("awarded", 0) for e in xp_events)
+    leveled_up = any(e.get("leveled_up") for e in xp_events)
+
+    response = QuizSubmitResponse.model_validate(attempt)
+    response.xp_events = xp_events
+    response.total_xp_earned = total_xp_earned
+    response.current_streak = streak_info.get("current_streak")
+    response.leveled_up = leveled_up
+
+    return response
 
 
 @router.get("/mistakes", response_model=List[QuizMistakeResponse])

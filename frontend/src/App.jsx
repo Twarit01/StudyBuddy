@@ -1,8 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
+import { XPProvider } from './context/XPContext'
 import { useAuth } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
+import XPToastContainer from './components/XPToastContainer'
 
 import Login      from './pages/Login'
 import Register   from './pages/Register'
@@ -60,39 +62,42 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<RootRedirect />} />
-            <Route path="/login"    element={<GuestRoute><Login /></GuestRoute>} />
-            <Route path="/register" element={<GuestRoute><Register /></GuestRoute>} />
-            <Route path="/dashboard" element={
-              <ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>
-            } />
-            <Route path="/documents" element={
-              <ProtectedRoute><AppLayout><Documents /></AppLayout></ProtectedRoute>
-            } />
-            <Route path="/reader/:documentId" element={
-              <ProtectedRoute><AppLayout><DocumentReader /></AppLayout></ProtectedRoute>
-            } />
-            <Route path="/chat" element={
-              <ProtectedRoute><AppLayout><Chat /></AppLayout></ProtectedRoute>
-            } />
-            <Route path="/quiz" element={
-              <ProtectedRoute><AppLayout><Quiz /></AppLayout></ProtectedRoute>
-            } />
-            <Route path="/flashcards" element={
-              <ProtectedRoute><AppLayout><Flashcards /></AppLayout></ProtectedRoute>
-            } />
-            <Route path="/revision" element={
-              <ProtectedRoute><AppLayout><Revision /></AppLayout></ProtectedRoute>
-            } />
-            <Route path="/progress" element={
-              <ProtectedRoute><AppLayout><Progress /></AppLayout></ProtectedRoute>
-            } />
-            <Route path="*" element={<RootRedirect />} />
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
-    </ThemeProvider>
-  )
-}
+        <XPProvider>
+          <BrowserRouter>
+            <XPToastContainer />
+            <Routes>
+              <Route path="/" element={<RootRedirect />} />
+              <Route path="/login"    element={<GuestRoute><Login /></GuestRoute>} />
+              <Route path="/register" element={<GuestRoute><Register /></GuestRoute>} />
+              <Route path="/dashboard" element={
+                <ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>
+              } />
+              <Route path="/documents" element={
+                <ProtectedRoute><AppLayout><Documents /></AppLayout></ProtectedRoute>
+              } />
+              <Route path="/reader/:documentId" element={
+                <ProtectedRoute><AppLayout><DocumentReader /></AppLayout></ProtectedRoute>
+              } />
+              <Route path="/chat" element={
+                <ProtectedRoute><AppLayout><Chat /></AppLayout></ProtectedRoute>
+              } />
+              <Route path="/quiz" element={
+                <ProtectedRoute><AppLayout><Quiz /></AppLayout></ProtectedRoute>
+              } />
+              <Route path="/flashcards" element={
+                <ProtectedRoute><AppLayout><Flashcards /></AppLayout></ProtectedRoute>
+              } />
+              <Route path="/revision" element={
+                <ProtectedRoute><AppLayout><Revision /></AppLayout></ProtectedRoute>
+              } />
+              <Route path="/progress" element={
+                <ProtectedRoute><AppLayout><Progress /></AppLayout></ProtectedRoute>
+              } />
+              <Route path="*" element={<RootRedirect />} />
+            </Routes>
+          </BrowserRouter>
+          </XPProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    )
+  }

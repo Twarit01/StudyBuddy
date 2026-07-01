@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { generateFlashcards, getAllFlashcards, getDueFlashcards, reviewFlashcard, deleteAllFlashcards } from '../api/flashcards'
 import { listDocuments } from '../api/documents'
+import { useXP } from '../context/XPContext'
 
 const QUALITY_BUTTONS = [
   { quality:0, label:'Forgot',  sub:'Reset',         color:'#EF4444', bg:'rgba(239,68,68,0.12)',   border:'rgba(239,68,68,0.3)'   },
@@ -12,6 +13,7 @@ const QUALITY_BUTTONS = [
 
 export default function Flashcards() {
   const location = useLocation()
+  const { showXPEvents } = useXP()
 
   const [cards, setCards]               = useState([])
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -68,11 +70,14 @@ export default function Flashcards() {
     if (!card || reviewing) return
     setReviewing(true); setError(null)
     try {
-      await reviewFlashcard(card.id, quality)
+      const result = await reviewFlashcard(card.id, quality)
       setSessionStats(prev => ({
-        correct: quality>=3 ? prev.correct+1 : prev.correct,
-        wrong:   quality<3  ? prev.wrong+1   : prev.wrong,
+        correct: quality >= 3 ? prev.correct + 1 : prev.correct,
+        wrong:   quality < 3  ? prev.wrong + 1  : prev.wrong,
       }))
+      if (result?.xp_awarded > 0) {
+        showXPEvents([{ awarded: result.xp_awarded, label: 'Reviewed a flashcard' }])
+      }
       if (currentIndex+1 >= cards.length) setFinished(true)
       else { setCurrentIndex(prev => prev+1); setFlipped(false) }
     } catch (err) { console.error(err); setError('Could not save your review. Please try again.') }

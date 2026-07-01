@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
+import { useXP } from '../context/XPContext'
 import { getQuizHistory } from '../api/quiz'
 import { getFlashcardStats } from '../api/flashcards'
 import { listDocuments } from '../api/documents'
@@ -34,7 +35,7 @@ function CircularProgress({ pct, color, size = 40 }) {
   const dash = (pct / 100) * circ
   return (
     <svg width={size} height={size} style={{ transform:'rotate(-90deg)', flexShrink:0 }}>
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke= "var(--db-border-light)" strokeWidth={4}/>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--db-border-light)" strokeWidth={4}/>
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={4}
         strokeLinecap="round" strokeDasharray={`${dash} ${circ}`}
         style={{ transition:'stroke-dasharray 0.6s ease' }}/>
@@ -45,6 +46,7 @@ function CircularProgress({ pct, color, size = 40 }) {
 export default function Dashboard() {
   const { user } = useAuth()
   const { isDark } = useTheme()
+  const { xp } = useXP()
   const navigate  = useNavigate()
 
   const [stats, setStats]             = useState({ quizzes:0, avgScore:0, flashcards:0, dueToday:0, docs:0 })
@@ -52,7 +54,6 @@ export default function Dashboard() {
   const [recentDocs, setRecentDocs]   = useState([])
   const [lastDoc, setLastDoc]         = useState(null)
   const [continueReading, setContinueReading] = useState(null)
-  const [streak, setStreak]           = useState(0)
   const [streakDays, setStreakDays]   = useState([])
   const [weakTopics, setWeakTopics]   = useState([])
   const [scoreTrend, setScoreTrend]   = useState([])
@@ -97,14 +98,9 @@ export default function Dashboard() {
 
         const activity = {}
         quizHistory.forEach(a => { activity[localDateKey(a.created_at)] = true })
-        let s = 0
-        const today = new Date()
-        for (let i = 0; i < 365; i++) {
-          const d = new Date(today); d.setDate(d.getDate() - i)
-          if (activity[localDateKey(d)]) s++; else if (i > 0) break
-        }
 
         const dayLabels  = ['M','T','W','T','F','S','S']
+        const today       = new Date()
         const weekStart  = new Date(today)
         const dow        = (today.getDay() + 6) % 7
         weekStart.setDate(today.getDate() - dow)
@@ -122,7 +118,6 @@ export default function Dashboard() {
         setRecentDocs(docs.slice(0,4))
         setLastDoc(docs[0] || null)
         setContinueReading(readingStats?.recent_documents?.[0] || null)
-        setStreak(s)
         setStreakDays(week)
         setScoreTrend(trend.length ? trend : [{ i:0, score:0 }])
       } catch (err) {
@@ -292,7 +287,7 @@ export default function Dashboard() {
           <div className="db-card" style={{ padding:'10px 18px', display:'flex', alignItems:'center', gap:10 }}>
             <span style={{ fontSize:20 }}>🔥</span>
             <div>
-              <div style={{ fontSize:20, fontWeight:800, lineHeight:1 }}>{streak}</div>
+              <div style={{ fontSize:20, fontWeight:800, lineHeight:1 }}>{xp.current_streak ?? 0}</div>
               <div style={{ fontSize:10, color: 'var(--db-text-muted)', marginTop:2 }}>day streak</div>
             </div>
           </div>
@@ -300,9 +295,11 @@ export default function Dashboard() {
             <span style={{ fontSize:18 }}>⚡</span>
             <div>
               <div style={{ fontSize:20, fontWeight:800, lineHeight:1 }} className="xp-text">
-                {(stats.quizzes * 50 + stats.dueToday * 10 + stats.docs * 30).toLocaleString()}
+                {(xp.total_xp || 0).toLocaleString()}
               </div>
-              <div style={{ fontSize:10, color: 'var(--db-text-muted)', marginTop:2 }}>total XP</div>
+              <div style={{ fontSize:10, color: 'var(--db-text-muted)', marginTop:2 }}>
+                Level {xp.level || 1} · total XP
+              </div>
             </div>
           </div>
         </div>
@@ -325,7 +322,7 @@ export default function Dashboard() {
             style={{ width:34, height:34, borderRadius:10, border:'none',
               background:'linear-gradient(135deg,#7C3AED,#6D28D9)',
               display:'flex', alignItems:'center', justifyContent:'center',
-              cursor:'pointer', flexShrink:0, fontSize:16, color:'var(--db-text)' }}>
+              cursor:'pointer', flexShrink:0, fontSize:16, color:'#fff' }}>
             →
           </button>
         </div>
@@ -476,7 +473,7 @@ export default function Dashboard() {
                     <div style={{ height:110 }}>
                       <ResponsiveContainer width="100%" height="100%">
                         <RadarChart data={topicStats} outerRadius="70%">
-                          <PolarGrid stroke= "var(--db-border-light)" />
+                          <PolarGrid stroke="var(--db-border-light)" />
                           <PolarAngleAxis dataKey="topic" tick={{ fontSize:0 }} />
                           <Radar dataKey="accuracy" stroke="#7C3AED" fill="#7C3AED" fillOpacity={0.2} />
                         </RadarChart>
@@ -551,7 +548,7 @@ export default function Dashboard() {
                         <div style={{ display:'flex', gap:2 }}>
                           {[...Array(4)].map((_,j) => (
                             <div key={j} style={{ width:18, height:3, borderRadius:2,
-                              background: j < Math.round((t.accuracy/100)*4) ? t.color :  'var(--db-border)' }}/>
+                              background: j < Math.round((t.accuracy/100)*4) ? t.color : 'var(--db-border)' }}/>
                           ))}
                         </div>
                         <div style={{ display:'flex', alignItems:'center', gap:5 }}>
@@ -600,7 +597,7 @@ export default function Dashboard() {
               <div style={{ display:'flex', flexDirection:'column', alignItems:'center' }}>
                 <div style={{ position:'relative', width:110, height:110 }}>
                   <svg viewBox="0 0 100 100" style={{ width:'100%', height:'100%', transform:'rotate(-90deg)' }}>
-                    <circle cx="50" cy="50" r="42" fill="none" stroke= "var(--db-border-light)" strokeWidth={8}/>
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="var(--db-border-light)" strokeWidth={8}/>
                     <circle cx="50" cy="50" r="42" fill="none" strokeWidth={8} strokeLinecap="round"
                       stroke="url(#scoreGrad)"
                       strokeDasharray={`${(stats.avgScore/100)*264} 264`}
@@ -656,32 +653,8 @@ export default function Dashboard() {
                       {g.done && <span style={{ fontSize:9, color:'var(--db-text)' }}>✓</span>}
                     </div>
                     <span style={{ fontSize:12, transition:'all 0.2s',
-                      color: g.done ?  'var(--db-text-muted)' :  'var(--db-text-light)',
+                      color: g.done ? 'var(--db-text-muted)' : 'var(--db-text-light)',
                       textDecoration: g.done ? 'line-through' : 'none' }}>{g.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Streak */}
-            <div className="db-card" style={{ padding:18 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:10 }}>
-                <span style={{ fontSize:15 }}>🔥</span>
-                <div style={{ fontSize:13, fontWeight:700 }}>{streak} day streak</div>
-              </div>
-              <p style={{ margin:'0 0 12px', fontSize:11, color: 'var(--db-text-muted)' }}>
-                Keep it up, {user?.full_name?.split(' ')[0]}!
-              </p>
-              <div style={{ display:'flex', justifyContent:'space-between' }}>
-                {streakDays.map((d,i) => (
-                  <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
-                    <div style={{ width:26, height:26, borderRadius:'50%', display:'flex',
-                      alignItems:'center', justifyContent:'center',
-                      background: d.filled ? 'linear-gradient(135deg,#7C3AED,#4F46E5)' : 'transparent',
-                      border: d.filled ? 'none' : '1.5px solid var(--db-border)' }}>
-                      {d.isToday && !d.filled && <div style={{ width:5, height:5, borderRadius:'50%', background:'#7C3AED' }}/>}
-                    </div>
-                    <span style={{ fontSize:9, color: 'var(--db-text-muted)' }}>{d.label}</span>
                   </div>
                 ))}
               </div>
