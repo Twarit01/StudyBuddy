@@ -2,9 +2,12 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { XPProvider } from './context/XPContext'
+import { SidebarProvider, useSidebar } from './context/SidebarContext'
 import { useAuth } from './context/AuthContext'
+import { useIsMobile } from './hooks/useIsMobile'
 import ProtectedRoute from './components/ProtectedRoute'
 import XPToastContainer from './components/XPToastContainer'
+import BottomNav from './components/BottomNav'
 
 import Login      from './pages/Login'
 import Register   from './pages/Register'
@@ -19,12 +22,29 @@ import DocumentReader from './pages/DocumentReader'
 import Sidebar    from './components/Sidebar'
 
 function AppLayout({ children }) {
+  const { collapsed } = useSidebar()
+  const isMobile = useIsMobile()
   return (
-    <div style={{ display:'flex', height:'100vh', overflow:'hidden', background:'#0C0C14' }}>
+    <div
+      className="app-layout"
+      style={{ display:'flex', height:'100dvh', overflow:'hidden', background:'#0C0C14' }}
+    >
       <Sidebar />
-      <main style={{ flex:1, overflow:'hidden' }}>
+      <main
+        className="app-main"
+        style={{
+          flex: 1,
+          overflow: 'hidden',
+          /* Desktop: reserve 70px for hamburger when sidebar is collapsed.
+             Mobile: 0 — bottom nav handles navigation, no hamburger needed */
+          paddingLeft: (!isMobile && collapsed) ? 70 : 0,
+          transition: 'padding-left 0.28s cubic-bezier(0.4,0,0.2,1)',
+          boxSizing: 'border-box',
+        }}
+      >
         {children}
       </main>
+      <BottomNav />
     </div>
   )
 }
@@ -63,6 +83,7 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <XPProvider>
+          <SidebarProvider>
           <BrowserRouter>
             <XPToastContainer />
             <Routes>
@@ -96,6 +117,7 @@ export default function App() {
               <Route path="*" element={<RootRedirect />} />
             </Routes>
           </BrowserRouter>
+          </SidebarProvider>
           </XPProvider>
         </AuthProvider>
       </ThemeProvider>

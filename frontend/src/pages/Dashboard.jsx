@@ -214,7 +214,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div style={{
+    <div className="db-page-scroll" style={{
       height: '100%',
       overflowY: 'auto',
       background: isDark ? '#0C0C14' : '#F8FAFC',
@@ -270,7 +270,7 @@ export default function Dashboard() {
       `}</style>
 
       {/* Header */}
-      <div style={{ padding:'28px 28px 0', display:'flex', alignItems:'flex-start',
+      <div className="db-header" style={{ padding:'28px 28px 0', display:'flex', alignItems:'flex-start',
         justifyContent:'space-between', flexWrap:'wrap', gap:14 }}>
         <div>
           <div style={{ fontSize:11, color: 'var(--db-text-muted)', marginBottom:4 }}>{todayStr}</div>
@@ -283,7 +283,7 @@ export default function Dashboard() {
               : "Ready to study? Let's go!"}
           </p>
         </div>
-        <div style={{ display:'flex', gap:10, flexShrink:0 }}>
+        <div className="db-header-stats" style={{ display:'flex', gap:10, flexShrink:0 }}>
           <div className="db-card" style={{ padding:'10px 18px', display:'flex', alignItems:'center', gap:10 }}>
             <span style={{ fontSize:20 }}>🔥</span>
             <div>
@@ -306,7 +306,7 @@ export default function Dashboard() {
       </div>
 
       {/* Ask-anything bar */}
-      <div style={{ margin:'20px 28px 0' }}>
+      <div className="db-ask-bar" style={{ margin:'20px 28px 0' }}>
         <div style={{ background:'var(--db-card-bg)', border:'1px solid var(--db-border)', borderRadius:14,
           display:'flex', alignItems:'center', gap:10, padding:'12px 16px' }}>
           <span style={{ fontSize:18, flexShrink:0 }}>✨</span>
@@ -338,14 +338,14 @@ export default function Dashboard() {
           background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)',
           borderRadius:12, color:'#FCA5A5', fontSize:13 }}>{error}</div>
       ) : (
-        <div className="fade-in" style={{ padding:'20px 28px',
+        <div className="db-main-grid fade-in" style={{ padding:'20px 28px',
           display:'grid', gridTemplateColumns:'1fr 308px', gap:20 }}>
 
           {/* LEFT COLUMN */}
           <div style={{ display:'flex', flexDirection:'column', gap:18, minWidth:0 }}>
 
             {/* Continue Learning + Study Plan */}
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+            <div className="db-top-cards" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
               <div className="db-card" style={{ padding:20, position:'relative', overflow:'hidden' }}>
                 <div style={{ position:'absolute', inset:0, pointerEvents:'none',
                   background:'linear-gradient(135deg,rgba(124,58,237,0.08),rgba(34,211,238,0.04))' }}/>
@@ -437,7 +437,7 @@ export default function Dashboard() {
             </div>
 
             {/* Stat row */}
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12 }}>
+            <div className="db-stat-row" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12 }}>
               {[
                 { icon:'⏱️', value: stats.avgScore ? `${stats.avgScore}%` : '—', label:'Study Score',     sub:'Good progress', color:'#8B5CF6' },
                 { icon:'📊', value: stats.quizzes,                               label:'Quizzes Done',     sub:'This session',  color:'#22D3EE' },
@@ -456,7 +456,7 @@ export default function Dashboard() {
             </div>
 
             {/* Topic Progress + Recent Docs */}
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+            <div className="db-bottom-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
               <div className="db-card" style={{ padding:20 }}>
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
                   <h2 style={{ margin:0, fontSize:14, fontWeight:700 }}>Topic Progress</h2>
@@ -589,7 +589,7 @@ export default function Dashboard() {
           </div>
 
           {/* RIGHT COLUMN */}
-          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+          <div className="db-right-col" style={{ display:'flex', flexDirection:'column', gap:14 }}>
 
             {/* Study Score gauge */}
             <div className="db-card" style={{ padding:18 }}>

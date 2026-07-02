@@ -101,7 +101,7 @@ export default function Flashcards() {
   const learning    = sessionStats.wrong
 
   return (
-    <div style={{ height:'100%', overflowY:'auto', background:'#0C0C14', color:'#fff',
+    <div className="fc-page-wrapper" style={{ height:'100%', overflowY:'auto', background:'#0C0C14', color:'#fff',
       fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif' }}>
       <style>{`
         .fc-card { background:#13131F; border:1px solid rgba(255,255,255,0.07); border-radius:16px; padding:20px; }
@@ -146,7 +146,7 @@ export default function Flashcards() {
         .fade-up { animation:fadeUp 0.25s ease; }
       `}</style>
 
-      <div style={{ maxWidth:640, margin:'0 auto', padding:'28px 24px' }}>
+      <div className="fc-content-padding" style={{ maxWidth:640, margin:'0 auto', padding:'28px 24px' }}>
 
         {/* Header */}
         <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between',

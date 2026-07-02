@@ -39,6 +39,7 @@ export default function Chat() {
   const [sessionError, setSessionError]       = useState(null)
   const [documentsError, setDocumentsError]   = useState(null)
   const [activeTopics, setActiveTopics]       = useState([])
+  const [showHistory, setShowHistory]         = useState(false)
 
   const messagesEndRef = useRef(null)
   const inputRef       = useRef(null)
@@ -200,8 +201,14 @@ export default function Chat() {
         @keyframes spin { to { transform:rotate(360deg) } }
       `}</style>
 
+      {/* Mobile session history backdrop */}
+      <div
+        className={`chat-history-backdrop${showHistory ? ' open' : ''}`}
+        onClick={() => setShowHistory(false)}
+      />
+
       {/* Sessions sidebar */}
-      <div style={{ width:220, flexShrink:0, display:'flex', flexDirection:'column',
+      <div className={`chat-sessions-sidebar${showHistory ? ' open' : ''}`} style={{ width:220, flexShrink:0, display:'flex', flexDirection:'column',
         background:'var(--db-sidebar-bg)', borderRight:'1px solid var(--db-border-light)', overflow:'hidden' }}>
 
         <div style={{ padding:'18px 14px 14px' }}>
@@ -274,15 +281,39 @@ export default function Chat() {
       <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
 
         {/* Top bar */}
-        <div style={{ padding:'14px 22px', borderBottom:'1px solid var(--db-border-light)',
+        <div className="chat-topbar" style={{ padding:'14px 22px', borderBottom:'1px solid var(--db-border-light)',
           display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
+          {/* Mobile history toggle button */}
+          <button
+            onClick={() => setShowHistory(v => !v)}
+            className="chat-history-btn"
+            style={{
+              display: 'none',
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 8,
+              padding: '6px 10px',
+              color: 'rgba(255,255,255,0.7)',
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: 'pointer',
+              alignItems: 'center',
+              gap: 4,
+              flexShrink: 0,
+              fontFamily: 'inherit',
+            }}
+            aria-label="Toggle chat history"
+            type="button"
+          >
+            💬 History
+          </button>
           <div>
             <h1 style={{ margin:0, fontSize:16, fontWeight:700 }}>AI Chat</h1>
             <p style={{ margin:0, fontSize:10, color: 'var(--db-text-muted)' }}>
               Personalised to your weak areas · answers grounded in your documents
             </p>
           </div>
-          <div style={{ display:'flex', gap:5, flexWrap:'wrap', justifyContent:'flex-end' }}>
+          <div className="chat-topbar-chips" style={{ display:'flex', gap:5, flexWrap:'wrap', justifyContent:'flex-end' }}>
             {TOPIC_CHIPS.map(t => (
               <button key={t} onClick={()=>toggleTopic(t)} className="topic-chip"
                 style={{
@@ -295,7 +326,7 @@ export default function Chat() {
         </div>
 
         {/* Messages */}
-        <div className="scroll-thin" style={{ flex:1, overflowY:'auto', padding:'20px' }}>
+        <div className="chat-messages-area scroll-thin" style={{ flex:1, overflowY:'auto', padding:'20px' }}>
           <div style={{ maxWidth:760, margin:'0 auto', display:'flex', flexDirection:'column', gap:18 }}>
 
             {loadingMessages && (
@@ -391,7 +422,7 @@ export default function Chat() {
         </div>
 
         {/* Input bar */}
-        <div style={{ padding:'14px 22px 18px', background:'var(--db-sidebar-bg)',
+        <div className="chat-input-area" style={{ padding:'14px 22px 18px', background:'var(--db-sidebar-bg)',
           borderTop:'1px solid var(--db-border-light)', flexShrink:0 }}>
           <div style={{ maxWidth:760, margin:'0 auto' }}>
             <div className="chat-input-wrap">

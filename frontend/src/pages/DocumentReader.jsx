@@ -310,7 +310,7 @@ export default function DocumentReader() {
   }
 
   return (
-    <div style={{ height:'100%', display:'flex', flexDirection:'column', overflow:'hidden',
+    <div className="reader-page-wrapper" style={{ height:'100%', display:'flex', flexDirection:'column', overflow:'hidden',
       background:'#0C0C14', color:'#fff',
       fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif' }}>
       <style>{`
@@ -399,10 +399,10 @@ export default function DocumentReader() {
       </div>
 
       {/* Main content */}
-      <div style={{ flex:1, display:'flex', overflow:'hidden' }}>
+      <div className="reader-layout" style={{ flex:1, display:'flex', overflow:'hidden' }}>
 
         {/* Viewer */}
-        <div ref={viewerRef} className="scroll-thin" onMouseUp={handleTextSelection}
+        <div ref={viewerRef} className="reader-viewer-panel scroll-thin" onMouseUp={handleTextSelection}
           style={{ flex:1, overflow:'auto', padding:'24px', background:'#0A0A12' }}>
           {isPdf && fileUrl ? (
             <Document file={fileUrl} onLoadSuccess={({ numPages }) => {
@@ -426,7 +426,7 @@ export default function DocumentReader() {
 
         {/* Side panel */}
         {panelOpen && (
-          <div style={{ width:340, flexShrink:0, borderLeft:'1px solid rgba(255,255,255,0.06)',
+          <div className="reader-side-panel" style={{ width:340, flexShrink:0, borderLeft:'1px solid rgba(255,255,255,0.06)',
             display:'flex', flexDirection:'column', background:'#0E0E1A' }}>
             <div style={{ display:'flex', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
               <button className={`rd-side-tab${sideTab === 'ai' ? ' active' : ''}`}

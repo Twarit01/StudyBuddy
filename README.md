@@ -5,11 +5,12 @@
 ![Python](https://img.shields.io/badge/Python-3.11-blue?style=flat-square&logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.111-green?style=flat-square&logo=fastapi)
 ![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)
+![Vite](https://img.shields.io/badge/Vite-5-646CFF?style=flat-square&logo=vite)
 ![Gemini](https://img.shields.io/badge/Gemini-2.5_Flash-orange?style=flat-square&logo=google)
 ![ChromaDB](https://img.shields.io/badge/ChromaDB-Vector_DB-purple?style=flat-square)
-![Tailwind](https://img.shields.io/badge/Tailwind-Indigo_%2B_Cyan-6366F1?style=flat-square&logo=tailwindcss)
+![Mobile Ready](https://img.shields.io/badge/Mobile-Responsive-10B981?style=flat-square&logo=apple)
 
-> Upload your lecture notes → Ask questions → Generate quizzes → Study with flashcards → Track your progress. All powered by Gemini AI, RAG, and spaced repetition.
+> Upload your lecture notes → Ask questions → Generate quizzes → Study with flashcards → Track your progress → Earn XP. All powered by Gemini AI, RAG, and spaced repetition.
 
 ---
 
@@ -17,7 +18,7 @@
 
 Most engineering students read their notes passively and forget most of it within a week. StudyBuddy fixes this by turning static study material into an interactive, AI-powered knowledge base.
 
-Upload PDF, DOCX, or TXT files, organize them into subject folders, and StudyBuddy builds a RAG pipeline on top of them — letting you ask questions, generate quizzes, build flashcards, extract formula sheets, and get an AI-generated study plan, all grounded in your own material.
+Upload PDF, DOCX, or TXT files, organize them into subject folders, and StudyBuddy builds a RAG pipeline on top of them — letting you ask questions, generate quizzes, build flashcards, extract formula sheets, read documents with an AI assistant, get a daily revision plan, and earn XP — all grounded in your own material.
 
 ---
 
@@ -42,15 +43,21 @@ flowchart TD
     G -->|Retrieve key concepts| C
     G -->|Generate cards + SM-2 schedule| E
 
+    A -->|Opens document| R[📖 Document Reader]
+    R -->|Page-by-page reading| C
+    R -->|AI Q&A on current page| E
+
     E -->|Results saved| H[(💾 SQLite Database)]
     H -->|Scores + streaks + weak topics| I[📊 Progress Dashboard]
-    I -->|AI Study Plan| A
+    I -->|AI Study Plan + Daily Revision| A
+    H -->|XP + Level + Achievements| X[🏆 XP System]
 
     style A fill:#6366F1,color:#fff
     style E fill:#06B6D4,color:#fff
     style C fill:#8B5CF6,color:#fff
     style H fill:#3B82F6,color:#fff
     style I fill:#10B981,color:#fff
+    style X fill:#F59E0B,color:#fff
 ```
 
 ---
@@ -59,48 +66,91 @@ flowchart TD
 
 ### 📁 Subject-Organized Documents
 - Upload PDF, DOCX, and TXT files
-- Create color-coded subject folders (e.g. DSA, OS, Maths)
-- Drag-and-drop upload with live progress
-- Slide-over preview panel for each document
+- Create color-coded, emoji-tagged subject folders (e.g. 🔵 DSA, 🟢 OS, 🟡 Maths)
+- Live upload progress bar with chunking status
+- Slide-over preview panel per document with full metadata
+- Assign documents to subjects, reassign anytime
 
 ### 🤖 AI Document Intelligence
-- Auto-generated summary on every upload
+- Auto-generated structured summary on every upload
 - One-click formula sheet extraction (every equation in a document, organized)
 - AI-generated overview of an entire subject's documents
 - Export summaries and formula sheets as branded PDFs
+
+### 📖 Document Reader
+- Built-in PDF and plain-text reader — no external app needed
+- Page-by-page navigation with zoom controls (50%–200%)
+- In-document text search with match highlighting and result navigation
+- Read progress tracker (% read per document, persisted across sessions)
+- AI Assistant panel — ask questions about the current page/document
+- Highlight any text → instantly ask AI about the selection
+- Notes panel — create, view, and manage page-specific study notes
+- Resume reading from exactly where you left off
 
 ### 💬 RAG-Powered Q&A Chat
 - Answers grounded strictly in your uploaded material
 - Source citations — document name and page number on every answer
 - Confidence indicator — High / Medium / Low
 - Multi-turn conversation memory, multiple saved sessions
+- Suggested follow-up questions after every answer
 - LaTeX formula rendering for engineering equations
+- Document scope selector — chat about all docs or a specific file
 
 ### 📝 Quiz Generator
 - Three types — MCQ, Short Answer, Formula Recall
 - Three difficulty levels — Easy, Medium, Hard
+- Configurable question count and topic filter
 - Timed exam mode with countdown timer and auto-submit
-- Gemini evaluates short answers with detailed feedback
+- Gemini evaluates short answers with detailed line-by-line feedback
 - Results exportable as a branded PDF report
+- Weak topics automatically flagged and fed into the study plan
 
 ### 🃏 Flashcard System
 - AI-generated flashcards from your uploaded material
 - SM-2 spaced repetition algorithm — same as Anki
+- Quality rating 0–5 on each card (Blackout → Perfect)
 - Cards scheduled based on how well you knew them
-- Due-today queue, session summary with stats
+- Due-today queue, session summary with known/learning counts
+- Study mode and management mode (view/edit/delete)
 
-### 📊 Progress Dashboard
+### 🔄 Daily Revision Hub
+- Smart daily revision plan combining:
+  - Flashcards due today (SM-2 scheduled)
+  - Questions you got wrong in past quizzes
+  - Your single weakest topic highlighted
+- Completion tracker showing today's revision progress
+- Prevents revision fatigue by only showing what's actually due
+
+### 📊 Analytics & Progress
 - Topic accuracy bar chart + radar visualization
 - AI-generated personalized study plan based on weak topics and due cards
-- Study streak tracker with weekly visual
+- Study streak tracker with weekly visual calendar
 - 30-day activity heatmap
 - Full progress report exportable as PDF
 
-### 🎨 Premium UI
-- Indigo + Cyan design system
-- Full dark / light mode support
-- Collapsible sidebar with persistent state
-- Three-column dashboard layout with live study score gauge
+### 🏆 XP & Gamification System
+- Earn XP for every action: quiz completion, flashcard sessions, reading, chatting
+- Level up with increasing XP thresholds
+- XP toast notifications — animated pop-ups on every reward
+- Streak multiplier — longer study streaks = more XP per action
+- Weekly XP bar displayed in the sidebar
+
+### 🎨 Premium UI / UX
+- Deep dark design system (`#0C0C14` base, indigo + cyan accents)
+- Full dark / light mode toggle (persisted)
+- Collapsible sidebar with persistent collapsed state
+- Smooth animated transitions throughout
+- LaTeX rendering via KaTeX for all mathematical content
+- Recharts-powered analytics visualizations
+
+### 📱 Mobile Responsive (Full Feature Parity)
+- Complete mobile experience — every desktop feature works on phone
+- Fixed bottom navigation bar (Home, Chat, Quiz, Cards, Docs, More)
+- Sidebar transforms into a full-height overlay drawer on mobile
+- All page layouts reflow to single-column on narrow screens
+- Touch-optimized with 44px minimum tap targets
+- Safe area inset support for notched iPhones
+- `100dvh` viewport — no content hidden behind mobile browser chrome
 
 ---
 
@@ -108,8 +158,10 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    subgraph Frontend["⚛️ React Frontend"]
-        UI[Vite + Tailwind + Recharts + KaTeX]
+    subgraph Frontend["⚛️ React Frontend (Vite)"]
+        UI[React 18 + Vanilla CSS + Recharts + KaTeX]
+        CTX[Context API: Auth, Theme, XP, Sidebar]
+        MOB[Mobile Layer: useIsMobile + BottomNav + mobile.css]
     end
 
     subgraph Backend["⚡ FastAPI Backend"]
@@ -119,16 +171,19 @@ flowchart LR
         FC[🃏 Flashcard Generator]
         SP[📊 Study Planner]
         DA[📄 Document AI]
+        RD[📖 Reader / Notes]
+        XP[🏆 XP Engine]
     end
 
     subgraph AI["✨ Gemini 2.5 Flash"]
         GEN[Text Generation]
-        EMB[Embeddings]
+        EMB[text-embedding-004]
     end
 
     subgraph Storage["💾 Storage"]
         VEC[(ChromaDB\nVectors)]
         DB[(SQLite\nRelational)]
+        FS[📁 Uploads\nFile System]
     end
 
     Frontend -->|REST API| Backend
@@ -137,7 +192,10 @@ flowchart LR
     FC --> AI
     SP --> AI
     DA --> AI
+    RD --> DB
+    XP --> DB
     RAG --> VEC
+    DA --> FS
     Backend --> DB
 
     style Frontend fill:#06B6D4,color:#fff
@@ -153,7 +211,7 @@ flowchart LR
 1. **Upload** — Student uploads PDF / DOCX / TXT, optionally into a subject folder
 2. **Extract** — PyMuPDF and python-docx extract text page by page
 3. **Chunk** — Text split into 512-token chunks with 64-token overlap
-4. **Embed** — Gemini text-embedding-004 converts each chunk to a vector
+4. **Embed** — Gemini `text-embedding-004` converts each chunk to a vector
 5. **Store** — Vectors saved in ChromaDB with document name and page metadata
 6. **Summarize** — Gemini auto-generates a structured summary from the chunks
 7. **Query** — Student question converted to a query embedding
@@ -176,7 +234,21 @@ Flashcards use the SM-2 algorithm — the same one used by Anki:
 | 4 | Correct with hesitation | Interval increases |
 | 5 | Perfect recall | Long interval, ease factor goes up |
 
-Ease factor never drops below 1.3. Due cards always shown on the dashboard.
+Ease factor never drops below 1.3. Due cards always shown on the dashboard and revision hub.
+
+---
+
+## 🏆 XP System
+
+| Action | XP Earned |
+|---|---|
+| Complete a quiz | 50–150 XP (scales with score) |
+| Flashcard session | 10 XP per card reviewed |
+| Chat message answered | 5 XP |
+| Reading a document page | 2 XP |
+| Daily login streak | Streak multiplier applied |
+
+XP is persisted per user. Level thresholds increase progressively (e.g. Level 1 = 100 XP, Level 2 = 250 XP, ...).
 
 ---
 
@@ -184,21 +256,86 @@ Ease factor never drops below 1.3. Due cards always shown on the dashboard.
 
 | Layer | Technology | Purpose |
 |---|---|---|
-| LLM | Gemini 2.5 Flash | Text generation, quiz, flashcards, summaries |
+| LLM | Gemini 2.5 Flash | Text generation, quiz, flashcards, summaries, study plans |
 | Embeddings | Gemini text-embedding-004 | Document and query vectorization |
 | Vector DB | ChromaDB | Semantic similarity search |
 | RAG Framework | LangChain | Document chunking pipeline |
 | Backend | FastAPI + Python 3.11 | REST API |
-| Database | SQLite + SQLAlchemy | Users, subjects, documents, quizzes, flashcards, chats |
-| Frontend | React 18 + Vite | User interface |
-| Styling | Tailwind CSS | Indigo + Cyan design system |
-| Charts | Recharts | Progress visualization, radar, bar, line |
+| Database | SQLite + SQLAlchemy | Users, subjects, documents, quizzes, flashcards, chats, XP, notes |
+| Frontend | React 18 + Vite 5 | User interface |
+| Styling | Vanilla CSS + custom design system | Dark mode, animations, glassmorphism |
+| Mobile | custom `mobile.css` + `useIsMobile` hook | Full mobile responsive layer |
+| Charts | Recharts | Progress visualization, radar, bar, line, heatmap |
+| Math | KaTeX | LaTeX formula rendering |
+| PDF Viewer | react-pdf | In-app PDF reading |
 | PDF Export | jsPDF + jspdf-autotable | Quiz reports, study plans, summaries, formula sheets |
-| Icons | Tabler Icons | Icon system |
 | Auth | JWT + bcrypt | Secure user sessions |
 | PDF Parsing | PyMuPDF | Text extraction from PDFs |
+| DOCX Parsing | python-docx | Word document extraction |
 | Spaced Repetition | SM-2 Algorithm | Flashcard scheduling |
-| Evaluation | RAGAS-style metrics | RAG quality measurement |
+
+---
+
+## 📂 Project Structure
+
+```
+StudyBuddy/
+├── backend/
+│   ├── main.py                  # FastAPI app entry point
+│   ├── requirements.txt
+│   ├── .env.example
+│   ├── models/                  # SQLAlchemy ORM models
+│   ├── routes/
+│   │   ├── auth.py              # Register, login, JWT
+│   │   ├── documents.py         # Upload, process, subjects
+│   │   ├── chat.py              # RAG Q&A, sessions
+│   │   ├── quiz.py              # Quiz generation & grading
+│   │   ├── flashcards.py        # Flashcard CRUD + SM-2
+│   │   ├── reader.py            # Document reader, notes, progress
+│   │   ├── progress.py          # Analytics & study plan
+│   │   ├── subjects.py          # Subject CRUD
+│   │   └── xp.py                # XP & level system
+│   ├── services/                # AI service wrappers (Gemini, ChromaDB)
+│   ├── core/                    # Config, DB session, auth utilities
+│   └── uploads/                 # Uploaded files (gitignored)
+│
+└── frontend/
+    ├── public/
+    │   └── studybuddy-logo.png
+    ├── src/
+    │   ├── main.jsx             # App entry + CSS imports
+    │   ├── App.jsx              # Router, layout, BottomNav
+    │   ├── index.css            # Global design system
+    │   ├── styles/
+    │   │   └── mobile.css       # Mobile responsive overrides (≤768px)
+    │   ├── pages/
+    │   │   ├── Dashboard.jsx    # Home + AI ask bar + stats + study plan
+    │   │   ├── Chat.jsx         # RAG Q&A chat interface
+    │   │   ├── Quiz.jsx         # Quiz generator + timer + results
+    │   │   ├── Flashcards.jsx   # Flashcard study + SM-2
+    │   │   ├── Documents.jsx    # Document hub + subject folders
+    │   │   ├── DocumentReader.jsx # In-app reader + AI + notes
+    │   │   ├── Progress.jsx     # Analytics dashboard
+    │   │   ├── Revision.jsx     # Daily revision hub
+    │   │   ├── Login.jsx
+    │   │   └── Register.jsx
+    │   ├── components/
+    │   │   ├── Sidebar.jsx      # Collapsible sidebar (desktop) / drawer (mobile)
+    │   │   ├── BottomNav.jsx    # Mobile bottom navigation bar
+    │   │   ├── XPToastContainer.jsx # Animated XP reward notifications
+    │   │   ├── SourceCitation.jsx   # Chat answer source badges
+    │   │   ├── FileUpload.jsx
+    │   │   └── ProtectedRoute.jsx
+    │   ├── context/
+    │   │   ├── AuthContext.jsx  # User auth state
+    │   │   ├── ThemeContext.jsx # Dark / light mode
+    │   │   ├── XPContext.jsx    # XP + level state
+    │   │   └── SidebarContext.jsx # Sidebar collapsed state
+    │   ├── hooks/
+    │   │   └── useIsMobile.js   # Breakpoint detection (≤768px)
+    │   └── api/                 # Axios API wrappers per feature
+    └── package.json
+```
 
 ---
 
@@ -221,7 +358,7 @@ cd backend
 
 # Create virtual environment
 python3.11 -m venv venv
-source venv/bin/activate
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
@@ -269,3 +406,75 @@ npm run dev
 ```
 
 ### 5. Open in browser
+
+```
+http://localhost:5173
+```
+
+Register a new account, upload a document, and start studying!
+
+### 6. Test on Mobile
+
+To preview on your phone (must be on same Wi-Fi):
+
+```bash
+cd frontend
+npm run dev -- --host
+```
+
+Open the **Network** URL shown (e.g. `http://192.168.1.x:5173`) in your phone's browser.
+
+---
+
+## 🌐 API Endpoints (Summary)
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/auth/register` | Create new account |
+| POST | `/auth/login` | Login, returns JWT |
+| GET | `/documents/` | List all documents |
+| POST | `/documents/upload` | Upload + process a document |
+| GET | `/documents/{id}/summary` | Get auto-generated summary |
+| GET | `/documents/{id}/formula-sheet` | Get extracted formula sheet |
+| POST | `/chat/` | Send a chat message (RAG) |
+| GET | `/chat/sessions` | List all saved chat sessions |
+| POST | `/quiz/generate` | Generate a quiz |
+| POST | `/quiz/submit` | Submit answers, get score |
+| GET | `/flashcards/` | List all flashcards |
+| POST | `/flashcards/generate` | AI-generate flashcards |
+| POST | `/flashcards/review` | Submit SM-2 quality rating |
+| GET | `/reader/{doc_id}/page/{n}` | Get page text for reader |
+| POST | `/reader/{doc_id}/notes` | Save a reading note |
+| GET | `/progress/stats` | Get analytics data |
+| GET | `/progress/study-plan` | Get AI study plan |
+| GET | `/xp/` | Get current XP and level |
+| POST | `/xp/award` | Award XP for an action |
+| GET | `/subjects/` | List subjects |
+| POST | `/subjects/` | Create a subject |
+
+---
+
+## 📸 Pages at a Glance
+
+| Page | What it does |
+|---|---|
+| **Dashboard** | Central hub — XP level, streak, quick ask bar, study plan, recent docs |
+| **Chat** | RAG-powered Q&A grounded in your documents, with citation badges |
+| **Quiz** | Generate and take timed quizzes; get AI-graded feedback |
+| **Flashcards** | Study with SM-2 spaced repetition scheduling |
+| **Documents** | Upload, organize into subjects, preview, export |
+| **Document Reader** | Read PDFs/text in-app with AI assistant and notes |
+| **Progress** | Accuracy charts, radar, heatmap, AI study plan |
+| **Revision Hub** | Daily revision combining due flashcards, mistakes, and weak topics |
+
+---
+
+## 🤝 Contributing
+
+Pull requests are welcome! For major changes, open an issue first to discuss what you'd like to change.
+
+---
+
+## 📄 License
+
+MIT License — see [LICENSE](LICENSE) for details.

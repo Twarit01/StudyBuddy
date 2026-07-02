@@ -272,7 +272,7 @@ export default function Quiz() {
     : documents.filter(d => selectedDocs.includes(String(d.id))).map(d => d.original_name).join(', ')
 
   return (
-    <div style={{ height:'100%', overflowY:'auto', background:'#0C0C14', color:'#fff',
+    <div className="quiz-page-wrapper" style={{ height:'100%', overflowY:'auto', background:'#0C0C14', color:'#fff',
       fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif' }}>
       <style>{`
         .qz-card { background:#13131F; border:1px solid rgba(255,255,255,0.07); border-radius:16px; padding:22px; }
@@ -327,7 +327,7 @@ export default function Quiz() {
         .fade-up { animation:fadeUp 0.25s ease; }
       `}</style>
 
-      <div style={{ maxWidth:780, margin:'0 auto', padding:'28px 24px' }}>
+      <div className="quiz-content-padding" style={{ maxWidth:780, margin:'0 auto', padding:'28px 24px' }}>
 
         {/* Header */}
         <div style={{ marginBottom:24 }}>

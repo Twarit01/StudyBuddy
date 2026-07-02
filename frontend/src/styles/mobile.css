@@ -1,0 +1,717 @@
+/* ============================================================
+   StudyBuddy — Mobile Responsive Layer
+   Target: max-width 768px (tablet + phone)
+   Phone:  max-width 480px (phone-specific overrides)
+   
+   All rules are ADDITIVE — no desktop styles are modified.
+   Desktop experience is completely unchanged.
+   ============================================================ */
+
+/* ── Viewport & Base ─────────────────────────────────────── */
+@media (max-width: 768px) {
+  html, body {
+    overflow-x: hidden;
+  }
+
+  /* Ensure touch targets are always at least 44px */
+  button, a, [role="button"], select {
+    min-height: 44px;
+  }
+
+  /* Exception: icon-only small buttons keep their size but get larger tap area */
+  .sb-close-btn {
+    min-height: unset;
+  }
+}
+
+/* ── App Layout ──────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* The main flex container — sidebar goes to 0 on mobile (overlay instead) */
+  .app-layout {
+    position: relative;
+  }
+
+  /* Main content area gets bottom padding for the bottom nav */
+  .app-main {
+    padding-bottom: 68px !important;
+    padding-left: 0 !important;
+  }
+}
+
+/* ── Sidebar Overlay Drawer ─────────────────────────────── */
+@media (max-width: 768px) {
+  /* Sidebar becomes a full-height overlay drawer */
+  .sb-overlay-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 199;
+    animation: fadeIn 0.2s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* Sidebar drawer itself */
+  .sb-drawer {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: 100vh !important;
+    width: 260px !important;
+    z-index: 200 !important;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5) !important;
+    transform: translateX(0) !important;
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+
+  .sb-drawer-hidden {
+    transform: translateX(-100%) !important;
+  }
+}
+
+/* ── Bottom Navigation Bar ───────────────────────────────── */
+.bottom-nav {
+  display: none; /* hidden on desktop */
+}
+
+@media (max-width: 768px) {
+  .bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 150;
+    height: 64px;
+    align-items: stretch;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    background: #0E0E1A;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .bottom-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    text-decoration: none;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    transition: color 0.15s;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 0;
+    min-height: unset; /* override the 44px touch target rule above */
+  }
+
+  .bottom-nav-item .bnav-icon {
+    font-size: 20px;
+    line-height: 1;
+    transition: transform 0.15s;
+  }
+
+  .bottom-nav-item:active .bnav-icon {
+    transform: scale(0.88);
+  }
+
+  .bottom-nav-item.active {
+    color: #C4B5FD;
+  }
+
+  .bottom-nav-item.active .bnav-icon {
+    filter: drop-shadow(0 0 6px rgba(196, 181, 253, 0.5));
+  }
+
+  /* Active indicator dot */
+  .bottom-nav-item.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 24px;
+    height: 2px;
+    background: #7C3AED;
+    border-radius: 0 0 4px 4px;
+  }
+
+  .bottom-nav-item {
+    position: relative;
+  }
+}
+
+/* ── Hamburger button — hide on phone (bottom nav takes over) */
+@media (max-width: 480px) {
+  .sb-hamburger-mobile {
+    display: none !important;
+  }
+}
+
+/* ── Dashboard ───────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Page scroll wrapper */
+  .db-page-scroll {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Header */
+  .db-header {
+    padding: 16px 16px 0 !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  .db-header h1 {
+    font-size: 22px !important;
+  }
+
+  .db-header-stats {
+    width: 100% !important;
+    justify-content: flex-start !important;
+  }
+
+  /* Ask bar */
+  .db-ask-bar {
+    margin: 14px 16px 0 !important;
+  }
+
+  /* Main grid: desktop is 1fr 308px, mobile is single column */
+  .db-main-grid {
+    grid-template-columns: 1fr !important;
+    padding: 14px 16px !important;
+    gap: 14px !important;
+  }
+
+  /* Right column goes below on mobile */
+  .db-right-col {
+    order: 10; /* push to bottom */
+  }
+
+  /* Continue Learning + Study Plan: side by side → stacked */
+  .db-top-cards {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Stat row: 4 cols → 2 cols */
+  .db-stat-row {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Topic progress + Recent docs: side by side → stacked */
+  .db-bottom-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Achievements: 4 cols → 2 cols */
+  .db-achievements-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+/* ── Chat ────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Sessions sidebar hidden by default on mobile */
+  .chat-sessions-sidebar {
+    display: none !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: 100dvh !important;
+    width: 280px !important;
+    z-index: 250 !important;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  .chat-sessions-sidebar.open {
+    display: flex !important;
+  }
+
+  /* History backdrop */
+  .chat-history-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 249;
+  }
+
+  .chat-history-backdrop.open {
+    display: block;
+  }
+
+  /* Chat top bar on mobile */
+  .chat-topbar {
+    padding: 10px 14px !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+  }
+
+  .chat-topbar-chips {
+    display: none !important; /* hide topic chips — too cramped */
+  }
+
+  /* Show history button on mobile */
+  .chat-history-btn {
+    display: flex !important;
+  }
+
+  /* Message area */
+  .chat-messages-area {
+    padding: 12px !important;
+  }
+
+  /* Input bar */
+  .chat-input-area {
+    padding: 10px 12px !important;
+  }
+
+  /* User message: max-width less restrictive */
+  .msg-user {
+    max-width: 90% !important;
+  }
+}
+
+/* ── Quiz ────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .quiz-page-wrapper {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Setup screen */
+  .quiz-setup-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .quiz-setup-padding {
+    padding: 16px !important;
+  }
+
+  /* Question card */
+  .quiz-question-padding {
+    padding: 16px !important;
+    max-width: 100% !important;
+  }
+
+  /* Options grid: 2 cols → 1 col on phones */
+  .quiz-options-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Timer + progress bar row */
+  .quiz-timer-row {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    padding: 10px 14px !important;
+  }
+
+  /* Results */
+  .quiz-results-padding {
+    padding: 16px !important;
+  }
+
+  .quiz-results-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .quiz-content-padding {
+    padding: 14px 16px 80px !important;
+  }
+}
+
+/* ── Flashcards ──────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .fc-page-wrapper {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Card: full width */
+  .fc-card-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 16px !important;
+  }
+
+  .fc-card {
+    width: 100% !important;
+    height: 260px !important;
+  }
+
+  /* Controls */
+  .fc-controls {
+    padding: 12px 16px !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  /* Setup grid */
+  .fc-setup-grid {
+    grid-template-columns: 1fr !important;
+    padding: 16px !important;
+  }
+
+  /* Stats row */
+  .fc-stats-row {
+    grid-template-columns: 1fr 1fr 1fr !important;
+    gap: 8px !important;
+    padding: 10px 16px !important;
+  }
+
+  .fc-content-padding {
+    padding: 14px 16px 80px !important;
+  }
+}
+
+/* ── Documents ───────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .docs-page-wrapper {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Documents subjects sidebar: hide on mobile */
+  .docs-subjects-sidebar {
+    display: none !important;
+  }
+
+  /* Outer wrapper: single-column scroll on mobile */
+  .docs-outer-wrapper {
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Main content area takes full width */
+  .docs-main-content {
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow-y: auto !important;
+    flex: 1 !important;
+  }
+
+  /* Topbar: reduce padding, wrap if needed */
+  .docs-topbar {
+    padding: 14px 16px !important;
+  }
+
+  .docs-topbar > div {
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+  }
+
+  .docs-topbar h1 {
+    font-size: 20px !important;
+  }
+
+  /* Document card: stack vertically on mobile */
+  .doc-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+    padding: 14px 14px !important;
+  }
+
+  /* Doc row top section: icon + info side by side */
+  .doc-row > div:first-child {
+    margin-right: 0 !important;
+  }
+
+  /* Action buttons row: full width, wrap naturally */
+  .doc-row > div:last-child {
+    width: 100% !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  /* Each action button: grows to fill space */
+  .doc-row .act-btn {
+    flex: 1 !important;
+    justify-content: center !important;
+    min-width: 80px !important;
+  }
+
+  .docs-header {
+    padding: 16px !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  /* Documents grid: multiple cols → 1 col */
+  .docs-grid {
+    grid-template-columns: 1fr !important;
+    padding: 0 16px 16px !important;
+    gap: 10px !important;
+  }
+
+  /* Upload zone */
+  .docs-upload-zone {
+    margin: 0 16px !important;
+  }
+
+  /* Filters */
+  .docs-filters {
+    padding: 0 16px 12px !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+}
+
+/* ── Document Reader ─────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Hide the 3-panel flex layout, use tab-based single panel */
+  .reader-layout {
+    flex-direction: column !important;
+  }
+
+  /* TOC panel: hidden by default */
+  .reader-toc-panel {
+    display: none !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: 100vh !important;
+    width: 280px !important;
+    z-index: 250 !important;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  .reader-toc-panel.open {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* AI Panel: hidden by default */
+  .reader-ai-panel {
+    display: none !important;
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    height: 100vh !important;
+    width: 100vw !important;
+    z-index: 250 !important;
+  }
+
+  .reader-ai-panel.open {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* Reading area: full width */
+  .reader-content-area {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 !important;
+    padding: 12px !important;
+  }
+
+  /* Mobile reader toolbar */
+  .reader-mobile-toolbar {
+    display: flex !important;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    padding: 8px 12px;
+    gap: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    align-items: center;
+  }
+
+  .reader-mobile-toolbar-btn {
+    flex: 1;
+    padding: 8px 6px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.7);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: all 0.15s;
+  }
+
+  .reader-mobile-toolbar-btn.active {
+    background: rgba(124, 58, 237, 0.25);
+    border-color: rgba(124, 58, 237, 0.5);
+    color: #C4B5FD;
+  }
+
+  /* Panel backdrop */
+  .reader-panel-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 249;
+  }
+
+  .reader-panel-backdrop.open {
+    display: block;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Reading/Viewer area: full width on mobile */
+  .reader-viewer-panel {
+    padding: 12px !important;
+  }
+
+  /* Side panel: full-screen overlay when opened */
+  .reader-side-panel {
+    display: none !important;
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    height: 100dvh !important;
+    width: 100vw !important;
+    z-index: 250 !important;
+  }
+}
+
+/* Reader toolbar hidden on desktop */
+.reader-mobile-toolbar {
+  display: none;
+}
+
+/* ── Progress ────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .progress-page-wrapper {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  .progress-header {
+    padding: 16px !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  /* Stats grid: 4 cols → 2 cols */
+  .progress-stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+    padding: 0 16px !important;
+    gap: 10px !important;
+  }
+
+  /* Charts: stack vertically */
+  .progress-charts-grid {
+    grid-template-columns: 1fr !important;
+    padding: 0 16px !important;
+    gap: 14px !important;
+  }
+
+  /* Chart containers: full width, reduced height */
+  .progress-chart-container {
+    width: 100% !important;
+    height: 200px !important;
+  }
+
+  /* Activity heatmap: scrollable */
+  .progress-heatmap-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 8px !important;
+  }
+
+  .progress-content-padding {
+    padding: 0 16px 16px !important;
+  }
+}
+
+/* ── Revision ────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .revision-page-wrapper {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  .revision-header {
+    padding: 16px !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  /* Layout: 2-col → single col */
+  .revision-layout {
+    grid-template-columns: 1fr !important;
+    padding: 0 16px 16px !important;
+    gap: 14px !important;
+  }
+
+  /* Calendar: compact */
+  .revision-calendar {
+    width: 100% !important;
+  }
+  .rv-content-padding {
+    padding: 14px 16px 80px !important;
+  }
+
+  /* Revision header flex → column on narrow */
+  .rv-content-padding > div:first-child {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+}
+
+/* ── Login / Register ────────────────────────────────────── */
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 20px !important;
+    border-radius: 12px !important;
+  }
+}
+
+/* ── General mobile utilities ────────────────────────────── */
+@media (max-width: 768px) {
+  /* Scrollable container for any horizontal overflow */
+  .mobile-scroll-x {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Stack flex rows */
+  .mobile-stack {
+    flex-direction: column !important;
+  }
+
+  /* Full width on mobile */
+  .mobile-full {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Reduce padding */
+  .mobile-pad-sm {
+    padding: 12px !important;
+  }
+
+  /* Swipe hint animation */
+  @keyframes swipeHint {
+    0%   { transform: translateX(0); }
+    20%  { transform: translateX(-8px); }
+    40%  { transform: translateX(8px); }
+    60%  { transform: translateX(-4px); }
+    80%  { transform: translateX(4px); }
+    100% { transform: translateX(0); }
+  }
+
+  .swipe-hint {
+    animation: swipeHint 0.7s ease 0.5s both;
+  }
+}

@@ -151,7 +151,7 @@ export default function Progress() {
   })
 
   return (
-    <div style={{ height:'100%', overflowY:'auto', background:'#0C0C14', color:'#fff',
+    <div className="progress-page-wrapper" style={{ height:'100%', overflowY:'auto', background:'#0C0C14', color:'#fff',
       fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif' }}>
       <style>{`
         .an-card { background:#13131F; border:1px solid rgba(255,255,255,0.07); border-radius:18px; padding:26px; }
@@ -178,7 +178,7 @@ export default function Progress() {
         .pbar-fill  { height:100%; border-radius:20px; transition:width 0.5s; }
       `}</style>
 
-      <div style={{ maxWidth:1100, margin:'0 auto', padding:'28px 28px' }}>
+      <div className="progress-content-padding" style={{ maxWidth:1100, margin:'0 auto', padding:'28px 28px' }}>
 
         {/* Header */}
         <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between',

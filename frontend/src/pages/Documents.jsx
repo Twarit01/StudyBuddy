@@ -155,7 +155,7 @@ export default function Documents() {
   const activeSubjectData = subjects.find(s => s.id === activeSubject)
 
   return (
-    <div style={{
+    <div className="docs-outer-wrapper" style={{
       display:'flex', height:'100%', overflow:'hidden', background:'#0C0C14',
       color:'#fff', fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif'
     }}>
@@ -197,7 +197,7 @@ export default function Documents() {
       `}</style>
 
       {/* ── Left: Subjects sidebar ── */}
-      <div style={{
+      <div className="docs-subjects-sidebar" style={{
         width:196, flexShrink:0, display:'flex', flexDirection:'column',
         background:'#0E0E1A', borderRight:'1px solid rgba(255,255,255,0.06)', overflow:'hidden'
       }}>
@@ -279,10 +279,10 @@ export default function Documents() {
       </div>
 
       {/* ── Main ── */}
-      <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+      <div className="docs-main-content" style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
 
         {/* Top bar */}
-        <div style={{ padding:'18px 24px', background:'#0E0E1A',
+        <div className="docs-topbar" style={{ padding:'18px 24px', background:'#0E0E1A',
           borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
           <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}>
             <div>
