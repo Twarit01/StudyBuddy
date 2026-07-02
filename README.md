@@ -137,7 +137,6 @@ flowchart TD
 
 ### 🎨 Premium UI / UX
 - Deep dark design system (`#0C0C14` base, indigo + cyan accents)
-- Full dark / light mode toggle (persisted)
 - Collapsible sidebar with persistent collapsed state
 - Smooth animated transitions throughout
 - LaTeX rendering via KaTeX for all mathematical content
