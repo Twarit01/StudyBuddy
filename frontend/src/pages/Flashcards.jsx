@@ -91,6 +91,7 @@ export default function Flashcards() {
   }
 
   const handleSkip = () => {
+    setSessionStats(prev => ({ ...prev, wrong: prev.wrong + 1 }))
     if (currentIndex+1 >= cards.length) setFinished(true)
     else { setCurrentIndex(p => p+1); setFlipped(false) }
   }
@@ -259,10 +260,14 @@ export default function Flashcards() {
           <div className="fc-card fade-up" style={{ display:'flex', flexDirection:'column',
             alignItems:'center', textAlign:'center', padding:'52px 32px' }}>
             <div style={{ width:56, height:56, borderRadius:16, background:'rgba(124,58,237,0.15)',
-              display:'flex', alignItems:'center', justifyContent:'center', fontSize:28, marginBottom:16 }}>🃏</div>
-            <p style={{ fontSize:15, fontWeight:700, marginBottom:5 }}>No flashcards yet</p>
+              display:'flex', alignItems:'center', justifyContent:'center', fontSize:28, marginBottom:16 }}>
+              {mode === 'due' ? '🎉' : '🃏'}
+            </div>
+            <p style={{ fontSize:15, fontWeight:700, marginBottom:5 }}>
+              {mode === 'due' ? 'No flashcards due for review!' : 'No flashcards yet'}
+            </p>
             <p style={{ fontSize:13, color:'rgba(255,255,255,0.38)', margin:0 }}>
-              Upload study materials and generate cards above
+              {mode === 'due' ? 'You are all caught up for today.' : 'Upload study materials and generate cards above'}
             </p>
           </div>
         )}
@@ -276,7 +281,7 @@ export default function Flashcards() {
             <h2 style={{ fontSize:22, fontWeight:800, margin:'0 0 6px', letterSpacing:'-0.5px' }}>
               Session complete!
             </h2>
-            <div style={{ display:'flex', gap:32, margin:'16px 0 28px' }}>
+            <div style={{ display:'flex', gap:32, margin:'16px 0 24px' }}>
               <div style={{ textAlign:'center' }}>
                 <div style={{ fontSize:32, fontWeight:800, color:'#10B981', letterSpacing:'-0.5px' }}>
                   {sessionStats.correct}

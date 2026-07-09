@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { XPProvider } from './context/XPContext'
@@ -19,11 +19,13 @@ import Progress   from './pages/Progress'
 import Revision   from './pages/Revision'
 import Documents  from './pages/Documents'
 import DocumentReader from './pages/DocumentReader'
+import MindMap    from './pages/MindMap'
 import Sidebar    from './components/Sidebar'
 
 function AppLayout({ children }) {
   const { collapsed } = useSidebar()
   const isMobile = useIsMobile()
+  const location = useLocation()
   return (
     <div
       className="app-layout"
@@ -35,14 +37,14 @@ function AppLayout({ children }) {
         style={{
           flex: 1,
           overflow: 'hidden',
-          /* Desktop: reserve 70px for hamburger when sidebar is collapsed.
-             Mobile: 0 — bottom nav handles navigation, no hamburger needed */
           paddingLeft: (!isMobile && collapsed) ? 70 : 0,
           transition: 'padding-left 0.28s cubic-bezier(0.4,0,0.2,1)',
           boxSizing: 'border-box',
         }}
       >
-        {children}
+        <div key={location.pathname} className="sb-page" style={{ height:'100%' }}>
+          {children}
+        </div>
       </main>
       <BottomNav />
     </div>
@@ -113,6 +115,9 @@ export default function App() {
               } />
               <Route path="/progress" element={
                 <ProtectedRoute><AppLayout><Progress /></AppLayout></ProtectedRoute>
+              } />
+              <Route path="/mindmap" element={
+                <ProtectedRoute><AppLayout><MindMap /></AppLayout></ProtectedRoute>
               } />
               <Route path="*" element={<RootRedirect />} />
             </Routes>

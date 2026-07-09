@@ -29,7 +29,10 @@ export default function Chat() {
   const location = useLocation()
 
   const [sessions, setSessions]               = useState([])
-  const [activeSession, setActiveSession]     = useState(null)
+  const [activeSession, setActiveSession]     = useState(() => {
+    const saved = localStorage.getItem('chat_session_id')
+    return saved ? Number(saved) : null
+  })
   const [messages, setMessages]               = useState([])
   const [documents, setDocuments]             = useState([])
   const [documentId, setDocumentId]           = useState('')
@@ -39,13 +42,20 @@ export default function Chat() {
   const [sessionError, setSessionError]       = useState(null)
   const [documentsError, setDocumentsError]   = useState(null)
   const [activeTopics, setActiveTopics]       = useState([])
-  const [showHistory, setShowHistory]         = useState(false)
+
 
   const messagesEndRef = useRef(null)
   const inputRef       = useRef(null)
   const textareaRef    = useRef(null)
 
   useEffect(() => { loadSessions(); loadDocuments() }, [])
+
+  // Persist active session across refreshes
+  useEffect(() => {
+    if (activeSession) {
+      localStorage.setItem('chat_session_id', String(activeSession))
+    }
+  }, [activeSession])
 
   useEffect(() => {
     if (!location.state?.initialQuestion) return
@@ -63,8 +73,18 @@ export default function Chat() {
 
   const loadSessions = async () => {
     setSessionError(null)
-    try { setSessions(await getSessions()) }
-    catch (err) { console.error(err); setSessionError('Could not load recent chats') }
+    try {
+      const list = await getSessions()
+      setSessions(list)
+      // Auto-restore last session on first load
+      const savedId = localStorage.getItem('chat_session_id')
+      if (savedId && list.some(s => s.id === Number(savedId))) {
+        loadMessages(Number(savedId))
+      } else if (savedId) {
+        // Session no longer exists, clear it
+        localStorage.removeItem('chat_session_id')
+      }
+    } catch (err) { console.error(err); setSessionError('Could not load recent chats') }
   }
 
   const loadDocuments = async () => {
@@ -83,6 +103,7 @@ export default function Chat() {
   const handleNewChat = () => {
     setActiveSession(null); setMessages([])
     setActiveTopics([])
+    localStorage.removeItem('chat_session_id')
     setTimeout(() => inputRef.current?.focus(), 50)
   }
 
@@ -97,7 +118,11 @@ export default function Chat() {
     }])
     try {
       const data = await askQuestion(question, activeSession, documentId || null)
-      if (!activeSession) { setActiveSession(data.session_id); loadSessions() }
+      if (!activeSession) {
+        setActiveSession(data.session_id)
+        localStorage.setItem('chat_session_id', String(data.session_id))
+        loadSessions()
+      }
       setMessages(prev => [...prev, { ...data.message, sources:data.sources, confidence:data.confidence }])
     } catch (err) {
       setMessages(prev => [...prev, {
@@ -201,81 +226,7 @@ export default function Chat() {
         @keyframes spin { to { transform:rotate(360deg) } }
       `}</style>
 
-      {/* Mobile session history backdrop */}
-      <div
-        className={`chat-history-backdrop${showHistory ? ' open' : ''}`}
-        onClick={() => setShowHistory(false)}
-      />
 
-      {/* Sessions sidebar */}
-      <div className={`chat-sessions-sidebar${showHistory ? ' open' : ''}`} style={{ width:220, flexShrink:0, display:'flex', flexDirection:'column',
-        background:'var(--db-sidebar-bg)', borderRight:'1px solid var(--db-border-light)', overflow:'hidden' }}>
-
-        <div style={{ padding:'18px 14px 14px' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
-            <div style={{ width:36, height:36, borderRadius:10,
-              background:'linear-gradient(135deg,#7C3AED,#4F46E5)',
-              display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}>🤖</div>
-            <div>
-              <div style={{ fontSize:12, fontWeight:700 }}>AI Study Companion</div>
-              <div style={{ fontSize:10, color:'#10B981', display:'flex', alignItems:'center', gap:4 }}>
-                <div style={{ width:5, height:5, borderRadius:'50%', background:'#10B981' }}/>
-                Online · Personalised
-              </div>
-            </div>
-          </div>
-          <button onClick={handleNewChat}
-            style={{ width:'100%', padding:'8px 0', background:'linear-gradient(135deg,#7C3AED,#6D28D9)',
-              border:'none', borderRadius:9, color:'var(--db-text)', fontSize:12, fontWeight:700, cursor:'pointer',
-              display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-            + New chat
-          </button>
-        </div>
-
-        {/* Document scope */}
-        <div style={{ padding:'0 10px 10px' }}>
-          <div style={{ fontSize:10, fontWeight:700, color: 'var(--db-text-muted)', marginBottom:5,
-            display:'flex', alignItems:'center', gap:5 }}>📄 Document scope</div>
-          <select value={documentId} onChange={e=>setDocumentId(e.target.value)}
-            style={{ width:'100%', background: 'var(--db-hover-bg)',
-              border:'1px solid var(--db-border-light)', borderRadius:8,
-              padding:'6px 9px', color: 'var(--db-text-sub)', fontSize:11, outline:'none', cursor:'pointer' }}>
-            <option value="" style={{ color: isDark ? "#fff" : "#0F172A", background: isDark ? "#161625" : "#fff" }}>All documents</option>
-            {documents.map(d => <option key={d.id} value={d.id} style={{ color: isDark ? "#fff" : "#0F172A", background: isDark ? "#161625" : "#fff" }}>{d.original_name}</option>)}
-          </select>
-          {documentsError && <div style={{ marginTop:5, fontSize:10, color:'#FCA5A5' }}>{documentsError}</div>}
-        </div>
-
-        {/* Session list */}
-        <div className="scroll-thin" style={{ flex:1, overflowY:'auto', padding:'0 6px 10px' }}>
-          <div style={{ fontSize:9, fontWeight:700, color: 'var(--db-text-muted)',
-            letterSpacing:1, padding:'0 6px 7px', textTransform:'uppercase' }}>Recent</div>
-          {sessionError && (
-            <div style={{ margin:'0 6px 8px', padding:'7px 10px', borderRadius:8, fontSize:10,
-              background:'rgba(239,68,68,0.1)', color:'#FCA5A5' }}>{sessionError}</div>
-          )}
-          {sessions.length === 0 ? (
-            <div style={{ textAlign:'center', padding:'20px 14px', color: 'var(--db-text-muted)', fontSize:11 }}>
-              <div style={{ fontSize:22, marginBottom:5 }}>💬</div>No chats yet
-            </div>
-          ) : sessions.map(s => (
-            <div key={s.id} onClick={()=>loadMessages(s.id)}
-              className={`cs-item${activeSession===s.id?' active':''}`}
-              style={{ justifyContent:'space-between' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:6, flex:1, minWidth:0 }}>
-                <span style={{ fontSize:11 }}>💬</span>
-                <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.title}</span>
-              </div>
-              <button onClick={e=>handleDeleteSession(e,s.id)}
-                style={{ background:'none', border:'none', color: 'var(--db-text-muted)',
-                  cursor:'pointer', padding:'2px 4px', fontSize:11, opacity:0,
-                  transition:'opacity 0.15s', flexShrink:0 }}
-                onMouseEnter={e=>e.currentTarget.style.opacity=1}
-                onMouseLeave={e=>e.currentTarget.style.opacity=0}>✕</button>
-            </div>
-          ))}
-        </div>
-      </div>
 
       {/* Main chat */}
       <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
@@ -283,45 +234,22 @@ export default function Chat() {
         {/* Top bar */}
         <div className="chat-topbar" style={{ padding:'14px 22px', borderBottom:'1px solid var(--db-border-light)',
           display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
-          {/* Mobile history toggle button */}
-          <button
-            onClick={() => setShowHistory(v => !v)}
-            className="chat-history-btn"
-            style={{
-              display: 'none',
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 8,
-              padding: '6px 10px',
-              color: 'rgba(255,255,255,0.7)',
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: 'pointer',
-              alignItems: 'center',
-              gap: 4,
-              flexShrink: 0,
-              fontFamily: 'inherit',
-            }}
-            aria-label="Toggle chat history"
-            type="button"
-          >
-            💬 History
-          </button>
           <div>
             <h1 style={{ margin:0, fontSize:16, fontWeight:700 }}>AI Chat</h1>
             <p style={{ margin:0, fontSize:10, color: 'var(--db-text-muted)' }}>
-              Personalised to your weak areas · answers grounded in your documents
+              Answers grounded in your uploaded documents
             </p>
           </div>
-          <div className="chat-topbar-chips" style={{ display:'flex', gap:5, flexWrap:'wrap', justifyContent:'flex-end' }}>
-            {TOPIC_CHIPS.map(t => (
-              <button key={t} onClick={()=>toggleTopic(t)} className="topic-chip"
-                style={{
-                  background: activeTopics.includes(t) ? 'rgba(124,58,237,0.25)' :  'var(--db-hover-bg)',
-                  borderColor: activeTopics.includes(t) ? '#7C3AED' :  'var(--db-border)',
-                  color: activeTopics.includes(t) ? '#C4B5FD' :  'var(--db-text-muted)',
-                }}>{t}</button>
-            ))}
+          {/* Document scope selector */}
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <span style={{ fontSize:11, color:'var(--db-text-muted)' }}>📄</span>
+            <select value={documentId} onChange={e=>setDocumentId(e.target.value)}
+              style={{ background: 'var(--db-hover-bg)',
+                border:'1px solid var(--db-border-light)', borderRadius:8,
+                padding:'5px 9px', color: 'var(--db-text-sub)', fontSize:11, outline:'none', cursor:'pointer' }}>
+              <option value="" style={{ color: isDark ? "#fff" : "#0F172A", background: isDark ? "#161625" : "#fff" }}>All documents</option>
+              {documents.map(d => <option key={d.id} value={d.id} style={{ color: isDark ? "#fff" : "#0F172A", background: isDark ? "#161625" : "#fff" }}>{d.original_name}</option>)}
+            </select>
           </div>
         </div>
 
@@ -359,50 +287,69 @@ export default function Chat() {
               </>
             )}
 
-            {messages.map(msg => (
-              <div key={msg.id} style={{ display:'flex', gap:10,
-                justifyContent: msg.role==='user' ? 'flex-end' : 'flex-start',
-                alignItems:'flex-start' }}>
+            {messages.map(msg => {
+              const isUser = msg.role === 'user'
+              const time = msg.created_at
+                ? new Date(msg.created_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })
+                : ''
+              return (
+                <div key={msg.id} style={{
+                  display: 'flex',
+                  flexDirection: 'row',
+                  justifyContent: isUser ? 'flex-end' : 'flex-start',
+                  alignItems: 'flex-end',
+                  gap: 10,
+                }}>
 
-                {msg.role==='assistant' && (
-                  <div style={{ width:36, height:36, borderRadius:10,
-                    background:'linear-gradient(135deg,#7C3AED,#4F46E5)',
-                    display:'flex', alignItems:'center', justifyContent:'center',
-                    fontSize:16, flexShrink:0, marginTop:2 }}>🤖</div>
-                )}
-
-                <div style={{ display:'flex', flexDirection:'column', gap:6, maxWidth:'80%',
-                  alignItems: msg.role==='user' ? 'flex-end' : 'flex-start' }}>
-                  {msg.role==='assistant' ? (
-                    <>
-                      <div className="msg-assistant">
-                        <div className="markdown">
-                          <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                            {msg.content}
-                          </ReactMarkdown>
-                        </div>
-                      </div>
-                      {parseSources(msg.sources).length > 0 && (
-                        <div style={{ width:'100%' }}>
-                          <SourceCitation sources={parseSources(msg.sources)} confidence={msg.confidence}/>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="msg-user">{msg.content}</div>
+                  {/* Assistant avatar — left side */}
+                  {!isUser && (
+                    <div style={{ width:36, height:36, borderRadius:10, flexShrink:0,
+                      background:'linear-gradient(135deg,#7C3AED,#4F46E5)',
+                      display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}>
+                      🤖
+                    </div>
                   )}
-                  <div style={{ fontSize:10, color: 'var(--db-text-muted)', paddingLeft:2 }}>
-                    {new Date(msg.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}
-                  </div>
-                </div>
 
-                {msg.role==='user' && (
-                  <div style={{ width:36, height:36, borderRadius:10, background:'rgba(124,58,237,0.2)',
-                    display:'flex', alignItems:'center', justifyContent:'center',
-                    fontSize:12, fontWeight:700, color:'#C4B5FD', flexShrink:0, marginTop:2 }}>U</div>
-                )}
-              </div>
-            ))}
+                  {/* Bubble + timestamp stacked together */}
+                  <div style={{
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: isUser ? 'flex-end' : 'flex-start',
+                    gap: 4, maxWidth: '75%',
+                  }}>
+                    {isUser ? (
+                      <div className="msg-user">{msg.content}</div>
+                    ) : (
+                      <>
+                        <div className="msg-assistant">
+                          <div className="markdown">
+                            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                              {msg.content}
+                            </ReactMarkdown>
+                          </div>
+                        </div>
+                        {parseSources(msg.sources).length > 0 && (
+                          <div style={{ width:'100%' }}>
+                            <SourceCitation sources={parseSources(msg.sources)} confidence={msg.confidence}/>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {/* Timestamp always directly under bubble */}
+                    <div style={{ fontSize:10, color:'var(--db-text-muted)' }}>{time}</div>
+                  </div>
+
+                  {/* User avatar — right side */}
+                  {isUser && (
+                    <div style={{ width:36, height:36, borderRadius:10, flexShrink:0,
+                      background:'rgba(124,58,237,0.2)',
+                      display:'flex', alignItems:'center', justifyContent:'center',
+                      fontSize:12, fontWeight:700, color:'#C4B5FD' }}>U</div>
+                  )}
+                </div>
+              )
+            })}
+
+
 
             {loading && (
               <div style={{ display:'flex', gap:10, alignItems:'flex-start' }}>

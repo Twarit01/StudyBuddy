@@ -5,8 +5,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    host: true,          // expose on local network → accessible from phone
     proxy: {
-      // All /api calls from React go to FastAPI automatically
       '/api': {
         target: 'http://127.0.0.1:8000',
         changeOrigin: true,

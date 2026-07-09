@@ -74,6 +74,8 @@ export default function DocumentReader() {
   const [aiLoading, setAiLoading]   = useState(false)
   const [followUp, setFollowUp]     = useState('')
   const [lastAiExplanation, setLastAiExplanation] = useState(null)
+  // Stores the full original selected text so follow-ups have proper context
+  const aiContextText = useRef('')
 
   const isPdf = doc?.file_type === 'pdf'
   const isTextMode = doc && !isPdf
@@ -181,6 +183,8 @@ export default function DocumentReader() {
     }
 
     setAiLoading(true)
+    // Store the full original text so follow-ups can reference it
+    aiContextText.current = selection
     setAiMessages(prev => [...prev, {
       role: 'user',
       content: `[${action}] ${selection.slice(0, 120)}${selection.length > 120 ? '…' : ''}`,
@@ -224,28 +228,34 @@ export default function DocumentReader() {
 
   const handleFollowUp = async (e) => {
     e.preventDefault()
-    if (!followUp.trim() || (!selection && aiMessages.length === 0)) return
+    if (!followUp.trim() || aiMessages.length === 0) return
     const question = followUp.trim()
     setFollowUp('')
     setAiLoading(true)
+
+    // Capture current history BEFORE adding the new user message
+    // (backend appends the question itself, so we must NOT include it here)
+    const historySnapshot = aiMessages.map(m => ({ role: m.role, content: m.content }))
+
+    // Add the user message to the UI
     setAiMessages(prev => [...prev, { role: 'user', content: question }])
 
-    const selectedText = selection || aiMessages.find(m => m.role === 'user')?.content?.replace(/^\[[^\]]+\]\s*/, '') || ''
+    // Use the stored full context text, not the truncated display string
+    const contextText = aiContextText.current
 
     try {
-      const history = aiMessages.map(m => ({ role: m.role, content: m.content }))
       const result = await selectionAI(documentId, {
         action: 'ask',
-        selected_text: selectedText,
+        selected_text: contextText,
         page_num: currentPage,
         question,
-        follow_up_history: history,
+        follow_up_history: historySnapshot,
       })
       setAiMessages(prev => [...prev, { role: 'assistant', content: result.response }])
     } catch (err) {
       setAiMessages(prev => [...prev, {
         role: 'assistant',
-        content: err.response?.data?.detail || 'Follow-up failed.',
+        content: err.response?.data?.detail || 'Follow-up failed. Please try again.',
       }])
     } finally {
       setAiLoading(false)

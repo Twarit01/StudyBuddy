@@ -100,16 +100,39 @@ def ask_question(
         db.commit()
         db.refresh(session)
 
-    # Step 2: Retrieve relevant chunks
-    chunks = retrieve_relevant_chunks(
-        user_id=current_user.id,
-        query=request.question,
-        top_k=5,
-        document_id=request.document_id
-    )
+    # Step 2: Detect simple greetings / casual messages — skip RAG for these
+    GREETING_PATTERNS = {
+        "hello", "hi", "hey", "hiya", "howdy", "greetings",
+        "good morning", "good afternoon", "good evening", "good night",
+        "thanks", "thank you", "thx", "ty", "cheers",
+        "bye", "goodbye", "see you", "later",
+        "how are you", "what's up", "wassup", "sup",
+        "ok", "okay", "sure", "got it", "cool", "nice",
+        "help", "who are you", "what can you do",
+    }
+    question_lower = request.question.strip().lower().rstrip("!?.")
+    is_greeting = question_lower in GREETING_PATTERNS or len(request.question.strip().split()) <= 2 and question_lower in GREETING_PATTERNS
 
-    # Step 3: Build RAG prompt
-    rag_prompt, context_texts = build_rag_prompt(request.question, chunks)
+    if is_greeting:
+        rag_prompt = (
+            f"The student said: \"{request.question}\"\n\n"
+            "Respond in a friendly, brief, conversational way as StudyBuddy AI. "
+            "Keep it short (1-2 sentences). Don't mention documents."
+        )
+        context_texts = []
+        chunks = []
+    else:
+        # Step 2b: Retrieve relevant chunks
+        chunks = retrieve_relevant_chunks(
+            user_id=current_user.id,
+            query=request.question,
+            top_k=5,
+            document_id=request.document_id
+        )
+
+        # Step 3: Build RAG prompt
+        rag_prompt, context_texts = build_rag_prompt(request.question, chunks)
+
 
     # Step 4: Get conversation history for context (last 6 messages)
     recent_messages = (

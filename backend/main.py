@@ -23,7 +23,13 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:3000",
+        "http://192.168.1.2:5173",
+        "http://192.168.1.2:5174",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -38,6 +44,7 @@ from routes.progress   import router as progress_router
 from routes.subjects   import router as subjects_router
 from routes.reader     import router as reader_router
 from routes.xp         import router as xp_router
+from routes.mindmap    import router as mindmap_router
 
 app.include_router(auth_router,       prefix="/api/auth",       tags=["Auth"])
 app.include_router(subjects_router,   prefix="/api/subjects",   tags=["Subjects"])
@@ -48,6 +55,7 @@ app.include_router(quiz_router,       prefix="/api/quiz",       tags=["Quiz"])
 app.include_router(flashcards_router, prefix="/api/flashcards", tags=["Flashcards"])
 app.include_router(progress_router,   prefix="/api/progress",   tags=["Progress"])
 app.include_router(xp_router,         prefix="/api/xp",         tags=["XP"])
+app.include_router(mindmap_router,    prefix="/api/mindmap",    tags=["MindMap"])
 
 
 @app.get("/api/health")

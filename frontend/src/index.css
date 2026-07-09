@@ -199,3 +199,210 @@ body {
 
 /* ── Smooth transitions ── */
 * { transition-property: background-color, border-color, color; transition-duration: 0.15s; }
+
+/* ═══════════════════════════════════════════════════
+   GLOBAL ANIMATION SYSTEM — StudyBuddy
+   ═══════════════════════════════════════════════════ */
+
+/* ── Core keyframes ── */
+@keyframes sb-fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes sb-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes sb-slide-in-left {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes sb-slide-in-right {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes sb-scale-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes sb-bounce-in {
+  from { opacity: 0; transform: scale(0.88) translateY(12px); }
+  60%  { transform: scale(1.03) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes sb-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes sb-pulse-glow {
+  0%,100% { box-shadow: 0 0 0 0 rgba(124,58,237,0.0); }
+  50%      { box-shadow: 0 0 20px 4px rgba(124,58,237,0.25); }
+}
+@keyframes sb-float {
+  0%,100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+@keyframes sb-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes sb-count-up {
+  from { opacity: 0; transform: translateY(8px) scale(0.9); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes sb-bar-grow {
+  from { width: 0; }
+}
+@keyframes sb-progress-fill {
+  from { transform: scaleX(0); transform-origin: left; }
+  to   { transform: scaleX(1); transform-origin: left; }
+}
+@keyframes sb-border-dance {
+  0%,100% { border-color: rgba(124,58,237,0.2); }
+  50%      { border-color: rgba(124,58,237,0.55); }
+}
+
+/* ── Page entrance wrapper ── */
+.sb-page {
+  animation: sb-fade-up 0.45s cubic-bezier(0.34,1.2,0.64,1) both;
+}
+
+/* ── Utility entrance classes ── */
+.sb-anim-fade-up    { animation: sb-fade-up    0.5s ease both; }
+.sb-anim-fade-in    { animation: sb-fade-in    0.4s ease both; }
+.sb-anim-slide-left { animation: sb-slide-in-left  0.5s cubic-bezier(0.34,1.2,0.64,1) both; }
+.sb-anim-slide-right{ animation: sb-slide-in-right 0.5s cubic-bezier(0.34,1.2,0.64,1) both; }
+.sb-anim-scale-in   { animation: sb-scale-in   0.45s cubic-bezier(0.34,1.56,0.64,1) both; }
+.sb-anim-bounce-in  { animation: sb-bounce-in  0.55s cubic-bezier(0.34,1.56,0.64,1) both; }
+.sb-anim-float      { animation: sb-float      4s ease-in-out infinite; }
+
+/* Stagger helpers — apply as inline style animationDelay */
+.sb-d1  { animation-delay: 0.05s; }
+.sb-d2  { animation-delay: 0.10s; }
+.sb-d3  { animation-delay: 0.15s; }
+.sb-d4  { animation-delay: 0.20s; }
+.sb-d5  { animation-delay: 0.25s; }
+.sb-d6  { animation-delay: 0.30s; }
+.sb-d7  { animation-delay: 0.35s; }
+.sb-d8  { animation-delay: 0.40s; }
+
+/* ── Shimmer skeleton loader ── */
+.sb-skeleton {
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0.04) 25%,
+    rgba(255,255,255,0.10) 50%,
+    rgba(255,255,255,0.04) 75%);
+  background-size: 200% 100%;
+  animation: sb-shimmer 1.6s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+/* ── Stat / number cards ── */
+.sb-stat-card {
+  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1),
+              box-shadow 0.3s ease,
+              border-color 0.3s ease;
+  animation: sb-fade-up 0.5s cubic-bezier(0.34,1.2,0.64,1) both;
+}
+.sb-stat-card:hover {
+  transform: translateY(-4px) scale(1.01);
+}
+.dark .sb-stat-card:hover {
+  box-shadow: 0 12px 32px rgba(124,58,237,0.2), 0 0 0 1px rgba(124,58,237,0.2);
+  border-color: rgba(124,58,237,0.3) !important;
+}
+
+/* ── Interactive cards ── */
+.sb-card-hover {
+  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1),
+              box-shadow 0.3s ease,
+              border-color 0.3s ease;
+}
+.sb-card-hover:hover {
+  transform: translateY(-3px) scale(1.01);
+}
+.dark .sb-card-hover:hover {
+  box-shadow: 0 8px 28px rgba(124,58,237,0.18), 0 0 0 1px rgba(124,58,237,0.18);
+  border-color: rgba(124,58,237,0.25) !important;
+}
+
+/* ── Shimmer button ── */
+.sb-btn-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.sb-btn-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%; width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  animation: sb-shimmer 2.5s ease-in-out infinite;
+  background-size: 200% 100%;
+}
+.sb-btn-shimmer:disabled::after { animation: none; }
+
+/* ── Section title reveal ── */
+.sb-section-title {
+  animation: sb-slide-in-left 0.5s cubic-bezier(0.34,1.2,0.64,1) both;
+}
+
+/* ── Progress bar animated fill ── */
+.sb-progress-animated .progress-fill {
+  animation: sb-progress-fill 0.8s cubic-bezier(0.4,0,0.2,1) both;
+}
+
+/* ── Pulsing glow on accent elements ── */
+.sb-pulse-glow {
+  animation: sb-pulse-glow 3s ease-in-out infinite;
+}
+
+/* ── Nav item micro-animation ── */
+.nav-item {
+  transition: background 0.2s, color 0.2s, transform 0.2s cubic-bezier(0.34,1.56,0.64,1) !important;
+}
+.nav-item:hover { transform: translateX(3px) !important; }
+.nav-item.active { animation: sb-slide-in-left 0.3s ease; }
+
+/* ── Sidebar entrance ── */
+.sb-sidebar-enter { animation: sb-slide-in-left 0.35s cubic-bezier(0.34,1.2,0.64,1) both; }
+
+/* ── Toast/notification pop ── */
+.sb-toast { animation: sb-bounce-in 0.4s cubic-bezier(0.34,1.56,0.64,1) both; }
+
+/* ── Table row hover ── */
+.sb-table-row {
+  transition: background 0.2s, transform 0.2s ease;
+}
+.sb-table-row:hover { transform: translateX(2px); }
+
+/* ── Chip/tag hover ── */
+.sb-chip {
+  transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1),
+              box-shadow 0.2s ease, background 0.2s;
+}
+.sb-chip:hover {
+  transform: scale(1.06) translateY(-1px);
+  box-shadow: 0 4px 12px rgba(124,58,237,0.25);
+}
+
+/* ── Icon bounce on hover ── */
+.sb-icon-bounce {
+  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+.sb-icon-bounce:hover { transform: scale(1.2) rotate(-5deg); }
+
+/* ── Glow border on focus/active card ── */
+.sb-glow-border {
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+.sb-glow-border:hover, .sb-glow-border:focus-within {
+  border-color: rgba(124,58,237,0.5) !important;
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
+}
+
+/* ── Quiz / Flashcard flip animation enhancement ── */
+.flip-card-inner {
+  transition: transform 0.55s cubic-bezier(0.4,0,0.2,1) !important;
+}
+
+/* ── Smooth page scroll ── */
+html { scroll-behavior: smooth; }

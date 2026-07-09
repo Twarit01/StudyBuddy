@@ -7,13 +7,6 @@ export default function SourceCitation({ sources, confidence }) {
 
   if (!sources || sources.length === 0) return null
 
-  const confidenceConfig = {
-    high:   { color: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-400/30', label: 'High confidence' },
-    medium: { color: 'text-yellow-400',  bg: 'bg-yellow-400/10',  border: 'border-yellow-400/30',  label: 'Medium confidence' },
-    low:    { color: 'text-red-400',     bg: 'bg-red-400/10',     border: 'border-red-400/30',     label: 'Low confidence' },
-  }
-
-  const conf = confidenceConfig[confidence] || confidenceConfig.medium
 
   const openInReader = (source) => {
     if (!source.document_id) return
@@ -23,9 +16,6 @@ export default function SourceCitation({ sources, confidence }) {
   return (
     <div className="mt-2">
       <div className="flex items-center gap-2">
-        <span className={`text-xs px-2 py-0.5 rounded-full border ${conf.bg} ${conf.color} ${conf.border}`}>
-          {conf.label}
-        </span>
         <button
           onClick={() => setExpanded(!expanded)}
           className="text-xs text-gray-500 hover:text-gray-300 transition-colors"

@@ -151,36 +151,54 @@ def delete_document_chunks(user_id: int, document_id: int):
 
 # ── Build RAG prompt ──────────────────────────────────────────────────────────
 
+SIMILARITY_THRESHOLD = 0.3  # Minimum similarity score to consider a chunk relevant
+
 def build_rag_prompt(query: str, chunks: list[dict]) -> tuple[str, list[str]]:
     """
     Build the prompt that gets sent to Gemini.
     Injects retrieved chunks as context.
+    Filters out low-similarity chunks below SIMILARITY_THRESHOLD.
 
     Returns (full_prompt, list_of_context_texts)
     """
     if not chunks:
         return (
             f"The student asked: {query}\n\n"
-            "No study material has been uploaded yet. "
-            "Answer from your general engineering knowledge and mention "
-            "that uploading study material will give more specific answers.",
+            "IMPORTANT: No study material has been uploaded yet. "
+            "Respond ONLY with: 'This topic is not found in your uploaded documents. "
+            "Please upload relevant study material to get answers from your documents.'",
             []
         )
 
-    # Format each chunk with source info
+    # Filter chunks by similarity threshold to remove irrelevant results
+    relevant_chunks = [c for c in chunks if c["similarity_score"] >= SIMILARITY_THRESHOLD]
+
+    if not relevant_chunks:
+        return (
+            f"The student asked: {query}\n\n"
+            "IMPORTANT: The uploaded documents do not contain information relevant to this question. "
+            "Respond ONLY with: 'This topic is not covered in your uploaded documents. "
+            "The question appears to be outside the scope of your study materials.'",
+            []
+        )
+
+    # Format each relevant chunk with source info
     context_parts = []
     context_texts = []
 
-    for i, chunk in enumerate(chunks):
+    for chunk in relevant_chunks:
         source_info = f"[Source: {chunk['document_name']}, Page {chunk['page_num']}]"
         context_parts.append(f"{source_info}\n{chunk['text']}")
         context_texts.append(chunk["text"])
 
     context = "\n\n---\n\n".join(context_parts)
 
-    prompt = f"""Use the following context from the student's study materials to answer the question.
-Always mention which document and page your answer comes from.
-If the context does not contain enough information, say so clearly.
+    prompt = f"""You are answering STRICTLY from the student's uploaded study documents shown below.
+Rules:
+- Only answer using the provided CONTEXT. Do NOT use outside knowledge.
+- Always cite which document and page your answer comes from.
+- If the context does not contain a clear answer, say: "This specific detail is not clearly covered in your uploaded documents."
+- Be concise and clear.
 
 CONTEXT:
 {context}

@@ -3,19 +3,15 @@ import { createContext, useContext, useState, useEffect } from 'react'
 const ThemeContext = createContext(null)
 
 export function ThemeProvider({ children }) {
-  const [isDark, setIsDark] = useState(() => {
-    const saved = localStorage.getItem('theme')
-    return saved === 'dark'
-  })
+  // App is dark-mode only — always dark
+  const [isDark, setIsDark] = useState(true)
 
   useEffect(() => {
-    localStorage.setItem('theme', isDark ? 'dark' : 'light')
-    if (isDark) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-  }, [isDark])
+    // Always apply dark class — remove any stale 'light' from localStorage
+    localStorage.setItem('theme', 'dark')
+    document.documentElement.classList.add('dark')
+    document.documentElement.classList.remove('light')
+  }, [])
 
   const toggleTheme = () => setIsDark(prev => !prev)
 

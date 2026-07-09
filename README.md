@@ -210,7 +210,7 @@ flowchart LR
 1. **Upload** — Student uploads PDF / DOCX / TXT, optionally into a subject folder
 2. **Extract** — PyMuPDF and python-docx extract text page by page
 3. **Chunk** — Text split into 512-token chunks with 64-token overlap
-4. **Embed** — Gemini `text-embedding-004` converts each chunk to a vector
+4. **Embed** — Gemini `gemini-embedding-001` converts each chunk to a vector
 5. **Store** — Vectors saved in ChromaDB with document name and page metadata
 6. **Summarize** — Gemini auto-generates a structured summary from the chunks
 7. **Query** — Student question converted to a query embedding
@@ -256,7 +256,7 @@ XP is persisted per user. Level thresholds increase progressively (e.g. Level 1 
 | Layer | Technology | Purpose |
 |---|---|---|
 | LLM | Gemini 2.5 Flash | Text generation, quiz, flashcards, summaries, study plans |
-| Embeddings | Gemini text-embedding-004 | Document and query vectorization |
+| Embeddings | Gemini gemini-embedding-001 | Document and query vectorization |
 | Vector DB | ChromaDB | Semantic similarity search |
 | RAG Framework | LangChain | Document chunking pipeline |
 | Backend | FastAPI + Python 3.11 | REST API |
@@ -321,6 +321,7 @@ StudyBuddy/
     │   ├── components/
     │   │   ├── Sidebar.jsx      # Collapsible sidebar (desktop) / drawer (mobile)
     │   │   ├── BottomNav.jsx    # Mobile bottom navigation bar
+    │   │   ├── AnimatedBackground.jsx # Reusable floating particle canvas bg
     │   │   ├── XPToastContainer.jsx # Animated XP reward notifications
     │   │   ├── SourceCitation.jsx   # Chat answer source badges
     │   │   ├── FileUpload.jsx
@@ -416,12 +417,14 @@ Register a new account, upload a document, and start studying!
 
 To preview on your phone (must be on same Wi-Fi):
 
+`host: true` is already set in `frontend/vite.config.js`, so just run the normal dev command:
+
 ```bash
 cd frontend
-npm run dev -- --host
+npm run dev
 ```
 
-Open the **Network** URL shown (e.g. `http://192.168.1.x:5173`) in your phone's browser.
+Vite will print both a **Local** and a **Network** URL. Open the **Network** URL (e.g. `http://192.168.1.x:5173`) in your phone's browser. Make sure the backend is also running (`uvicorn main:app --host 0.0.0.0 --port 8000 --reload`) so API calls from the phone reach FastAPI.
 
 ---
 

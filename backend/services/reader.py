@@ -91,8 +91,10 @@ def run_selection_ai(
         }
 
     if action == "ask" and follow_up_history:
+        # Gemini requires role "model" instead of "assistant"
+        role_map = {"assistant": "model", "user": "user"}
         history = [
-            {"role": m["role"], "parts": [m["content"]]}
+            {"role": role_map.get(m["role"], m["role"]), "parts": [m["content"]]}
             for m in follow_up_history
         ]
         history.append({"role": "user", "parts": [question or "Explain this further."]})

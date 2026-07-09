@@ -1,5 +1,5 @@
 import time
-import google.generativeai as genai
+import google.generativeai as genai  # type: ignore[import]  # noqa: F401
 from core.config import settings
 
 # Configure Gemini with API key once at import time
@@ -102,11 +102,11 @@ def generate_with_history(
         model = genai.GenerativeModel(
             model_name=CHAT_MODEL,
             system_instruction=system_instruction or (
-                "You are StudyBuddy AI, an expert engineering tutor. "
-                "Answer questions clearly and concisely. "
-                "Use examples when helpful. "
-                "When answering from provided context, always cite the source document. "
-                "If the answer is not in the provided context, say so clearly."
+                "You are StudyBuddy AI, a study assistant that answers STRICTLY from the student's uploaded documents. "
+                "NEVER use outside knowledge or make up information. "
+                "If the provided context does not contain the answer, you MUST say so clearly. "
+                "Always cite the source document and page number when answering. "
+                "Be concise and direct."
             )
         )
         history  = messages[:-1]

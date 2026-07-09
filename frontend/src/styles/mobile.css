@@ -715,3 +715,35 @@
     animation: swipeHint 0.7s ease 0.5s both;
   }
 }
+
+/* ── Mind Map Page ──────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Top bar: stack vertically */
+  .mindmap-topbar {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    padding: 12px 14px !important;
+    gap: 10px !important;
+  }
+
+  /* Detail panel: slide up as a bottom sheet instead of right sidebar */
+  .mindmap-detail-panel {
+    position: fixed !important;
+    bottom: 70px !important; /* above bottom nav */
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-height: 55dvh !important;
+    border-left: none !important;
+    border-top: 1px solid rgba(255,255,255,0.1) !important;
+    border-radius: 20px 20px 0 0 !important;
+    z-index: 180 !important;
+    animation: slideUpSheet 0.25s ease !important;
+  }
+
+  @keyframes slideUpSheet {
+    from { transform: translateY(100%); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+}
+

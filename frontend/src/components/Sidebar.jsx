@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { path:'/quiz',       icon:'🎯', label:'Quizzes' },
   { path:'/flashcards', icon:'🃏', label:'Flashcards' },
   { path:'/documents',  icon:'📄', label:'Documents' },
+  { path:'/mindmap',    icon:'🕸️', label:'Mind Map' },
   { path:'/progress',   icon:'📊', label:'Analytics' },
   { path:'/revision',   icon:'📅', label:'Planner' },
 ]
