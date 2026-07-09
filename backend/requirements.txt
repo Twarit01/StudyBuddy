@@ -1,32 +1,32 @@
 # API framework
-fastapi==0.111.0
-uvicorn[standard]==0.29.0
+fastapi
+uvicorn[standard]
 
 # Authentication
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
+python-jose[cryptography]
+passlib[bcrypt]
 bcrypt==3.2.2
-python-multipart==0.0.9
+python-multipart
 
 # Database
-sqlalchemy==2.0.30
-aiosqlite==0.20.0
+sqlalchemy
+aiosqlite
 
 # Gemini AI
-google-generativeai==0.7.2
-langchain-google-genai==1.0.6
+google-generativeai
+langchain-google-genai
 
 # RAG / Vector store
-langchain==0.2.6
-langchain-community==0.2.6
-chromadb==0.5.3
+langchain
+langchain-community
+chromadb
 
 # Document parsing
-pymupdf==1.24.5
-python-docx==1.1.2
+pymupdf
+python-docx
 
 # Utilities
-python-dotenv==1.0.1
-pydantic[email]==2.7.4
-pydantic-settings==2.3.3
-aiofiles==23.2.1
+python-dotenv
+pydantic[email]
+pydantic-settings
+aiofiles
