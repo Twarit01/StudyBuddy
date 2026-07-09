@@ -631,34 +631,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Daily Goals */}
-            <div className="db-card" style={{ padding:18 }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-                <div style={{ fontSize:13, fontWeight:700 }}>Daily Goals</div>
-                <span style={{ fontSize:11, color:'#10B981', fontWeight:700 }}>{goalPct}%</span>
-              </div>
-              <div style={{ height:4, background: 'var(--db-border-light)', borderRadius:4,
-                marginBottom:12, overflow:'hidden' }}>
-                <div style={{ height:'100%', width:`${goalPct}%`,
-                  background:'linear-gradient(90deg,#7C3AED,#10B981)', borderRadius:4, transition:'width 0.5s' }}/>
-              </div>
-              <div style={{ fontSize:11, color: 'var(--db-text-muted)', marginBottom:10 }}>
-                {doneGoals} of {dailyGoals.length} complete
-              </div>
-              <div style={{ display:'flex', flexDirection:'column', gap:9 }}>
-                {dailyGoals.map(g => (
-                  <div key={g.id} onClick={()=>toggleGoal(g.id)}
-                    style={{ display:'flex', alignItems:'center', gap:9, cursor:'pointer' }}>
-                    <div className={`goal-check${g.done?' done':''}`}>
-                      {g.done && <span style={{ fontSize:9, color:'var(--db-text)' }}>✓</span>}
-                    </div>
-                    <span style={{ fontSize:12, transition:'all 0.2s',
-                      color: g.done ? 'var(--db-text-muted)' : 'var(--db-text-light)',
-                      textDecoration: g.done ? 'line-through' : 'none' }}>{g.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+
 
             {/* Due Today */}
             <div className="db-card" style={{ padding:18 }}>
