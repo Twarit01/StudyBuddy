@@ -19,7 +19,7 @@ langchain-google-genai
 # RAG / Vector store
 langchain
 langchain-community
-chromadb
+chromadb>=0.5.0
 
 # Document parsing
 pymupdf
@@ -27,6 +27,6 @@ python-docx
 
 # Utilities
 python-dotenv
-pydantic[email]>=2.0,<2.13
-pydantic-settings>=2.0,<3.0
+pydantic[email]
+pydantic-settings
 aiofiles
