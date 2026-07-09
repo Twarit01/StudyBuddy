@@ -57,6 +57,10 @@ app.include_router(xp_router,         prefix="/api/xp",         tags=["XP"])
 app.include_router(mindmap_router,    prefix="/api/mindmap",    tags=["MindMap"])
 
 
+@app.get("/")
+def root():
+    return {"status": "running", "message": "StudyBuddy API is live"}
+
 @app.get("/api/health")
 def health_check():
     return {"status": "running", "message": "StudyBuddy API is live"}
