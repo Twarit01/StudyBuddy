@@ -27,6 +27,6 @@ python-docx
 
 # Utilities
 python-dotenv
-pydantic[email]
-pydantic-settings
+pydantic[email]>=2.0,<2.13
+pydantic-settings>=2.0,<3.0
 aiofiles
