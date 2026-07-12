@@ -5,8 +5,7 @@ from .config import settings
 
 engine = create_engine(
     settings.DATABASE_URL,
-    # Needed for SQLite only — allows multiple threads
-    connect_args={"check_same_thread": False}
+    pool_pre_ping=True
 )
 
 SessionLocal = sessionmaker(
