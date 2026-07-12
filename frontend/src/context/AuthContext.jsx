@@ -53,6 +53,8 @@ export function AuthProvider({ children }) {
 
     localStorage.setItem('token', data.access_token)
     localStorage.setItem('user', JSON.stringify(data.user))
+    // Clear any stale chat session from a previous user on this browser
+    localStorage.removeItem('chat_session_id')
 
     return data
   }
@@ -74,6 +76,7 @@ export function AuthProvider({ children }) {
     setUser(null)
     localStorage.removeItem('token')
     localStorage.removeItem('user')
+    localStorage.removeItem('chat_session_id')
     window.location.href = '/login'
   }
 
