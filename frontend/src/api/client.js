@@ -16,14 +16,20 @@ client.interceptors.request.use((config) => {
   return config
 })
 
-// If token expires, redirect to login automatically
+// If token expires, clear session and redirect to login
 client.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      const hadToken = !!localStorage.getItem('token')
       localStorage.removeItem('token')
       localStorage.removeItem('user')
-      window.location.href = '/login'
+      // Only redirect if the user had an active session (token expired mid-session)
+      // Don't redirect on a plain login attempt failure — let the login page handle it
+      const isLoginRoute = error.config?.url?.includes('/auth/login')
+      if (hadToken && !isLoginRoute) {
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error)
   }
