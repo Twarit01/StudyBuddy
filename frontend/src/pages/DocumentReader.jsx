@@ -55,6 +55,7 @@ export default function DocumentReader() {
   const [loading, setLoading]       = useState(true)
   const [error, setError]           = useState(null)
   const [fileUrl, setFileUrl]       = useState(null)
+  const [fileData, setFileData]     = useState(null)
   const [numPdfPages, setNumPdfPages] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
   const [currentPage, setCurrentPage] = useState(initialPage)
@@ -110,7 +111,13 @@ export default function DocumentReader() {
 
         if (docData.file_type === 'pdf') {
           const blob = await getDocumentFileBlob(documentId)
-          setFileUrl(URL.createObjectURL(blob))
+          try {
+            const ab = await blob.arrayBuffer()
+            setFileData(ab)
+          } catch (e) {
+            // fallback to blob URL if arrayBuffer fails
+            setFileUrl(URL.createObjectURL(blob))
+          }
         }
       } catch (err) {
         setError(err.response?.data?.detail || 'Could not load document.')
@@ -414,8 +421,8 @@ export default function DocumentReader() {
         {/* Viewer */}
         <div ref={viewerRef} className="reader-viewer-panel scroll-thin" onMouseUp={handleTextSelection}
           style={{ flex:1, overflow:'auto', padding:'24px', background:'#0A0A12' }}>
-          {isPdf && fileUrl ? (
-            <Document file={fileUrl} onLoadSuccess={({ numPages }) => {
+          {isPdf && (fileData || fileUrl) ? (
+            <Document file={fileData ? { data: fileData } : fileUrl} onLoadSuccess={({ numPages }) => {
               setNumPdfPages(numPages)
               if (numPages !== totalPages) setTotalPages(numPages)
             }} loading={
