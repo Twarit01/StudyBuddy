@@ -212,54 +212,7 @@ flowchart LR
     style Storage fill:#8B5CF6,color:#fff
 ```
 
----
 
-## 🔄 RAG Pipeline
-
-1. **Upload** — Student uploads PDF / DOCX / TXT, optionally into a subject folder
-2. **Extract** — PyMuPDF and python-docx extract text page by page
-3. **Chunk** — Text split into 512-token chunks with 64-token overlap
-4. **Embed** — Gemini `gemini-embedding-001` converts each chunk to a vector
-5. **Store** — Vectors saved in ChromaDB with document name and page metadata
-6. **Cloud Upload** — Original file uploaded to Cloudinary for persistent storage
-7. **Summarize** — Gemini auto-generates a structured summary from the chunks
-8. **Query** — Student question converted to a query embedding
-9. **Retrieve** — Top-5 most similar chunks fetched by cosine similarity
-10. **Generate** — Gemini 2.5 Flash generates an answer using retrieved chunks as context
-11. **Cite** — Every answer shows source document, page number, and confidence score
-
----
-
-## 📈 Spaced Repetition — SM-2 Algorithm
-
-Flashcards use the SM-2 algorithm — the same one used by Anki:
-
-| Quality | Meaning | What happens |
-|---|---|---|
-| 0 | Complete blackout | Reset — review tomorrow |
-| 1 | Wrong, recognized answer | Reset — review tomorrow |
-| 2 | Wrong but easy recall | Reset — review soon |
-| 3 | Correct with effort | Interval increases slowly |
-| 4 | Correct with hesitation | Interval increases |
-| 5 | Perfect recall | Long interval, ease factor goes up |
-
-Ease factor never drops below 1.3. Due cards always shown on the dashboard and revision hub.
-
----
-
-## 🏆 XP System
-
-| Action | XP Earned |
-|---|---|
-| Complete a quiz | 50–150 XP (scales with score) |
-| Flashcard session | 10 XP per card reviewed |
-| Chat message answered | 5 XP |
-| Reading a document page | 2 XP |
-| Daily login streak | Streak multiplier applied |
-
-XP is persisted per user. Level thresholds increase progressively (e.g. Level 1 = 100 XP, Level 2 = 250 XP, ...).
-
----
 
 ## 🛠️ Tech Stack
 
