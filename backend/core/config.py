@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     ALLOWED_EXTENSIONS: str = "pdf,docx,txt"
     MAX_FILE_SIZE_MB: int = 50
 
+    # Cloudinary (for persistent file storage on Render free tier)
+    CLOUDINARY_CLOUD_NAME: str = ""
+    CLOUDINARY_API_KEY: str = ""
+    CLOUDINARY_API_SECRET: str = ""
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

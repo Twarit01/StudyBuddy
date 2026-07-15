@@ -10,10 +10,11 @@ class Document(Base):
     owner_id      = Column(Integer, ForeignKey("users.id"), nullable=False)
     subject_id    = Column(Integer, ForeignKey("subjects.id"), nullable=True)
 
-    filename      = Column(String, nullable=False)
+    filename      = Column(String, nullable=False)   # local name (kept for fallback)
     original_name = Column(String, nullable=False)
     file_type     = Column(String, nullable=False)
     file_size     = Column(Integer, nullable=False)
+    file_url      = Column(Text, nullable=True)       # Cloudinary URL (persistent storage)
 
     # Processing
     chunk_count    = Column(Integer, default=0)

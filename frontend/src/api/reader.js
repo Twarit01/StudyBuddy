@@ -1,5 +1,10 @@
 import client from './client'
 
+export const getDocumentFileUrl = async (documentId) => {
+  const res = await client.get(`/reader/${documentId}/file-url`)
+  return res.data  // { file_url: "https://..." | null, source: "cloudinary" | "local" }
+}
+
 export const getDocumentFileBlob = async (documentId) => {
   const res = await client.get(`/reader/${documentId}/file`, { responseType: 'blob' })
   return res.data

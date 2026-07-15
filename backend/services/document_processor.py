@@ -1,9 +1,69 @@
 import os
 import uuid
+import tempfile
+import urllib.request
 import fitz  # PyMuPDF
 from docx import Document as DocxDocument
 from pathlib import Path
+import cloudinary
+import cloudinary.uploader
 from core.config import settings, ALLOWED_EXTENSIONS_LIST, MAX_FILE_SIZE_BYTES
+
+# ── Cloudinary setup ──────────────────────────────────────────────────────────
+
+def _is_cloudinary_configured() -> bool:
+    return bool(
+        settings.CLOUDINARY_CLOUD_NAME
+        and settings.CLOUDINARY_API_KEY
+        and settings.CLOUDINARY_API_SECRET
+    )
+
+if _is_cloudinary_configured():
+    cloudinary.config(
+        cloud_name=settings.CLOUDINARY_CLOUD_NAME,
+        api_key=settings.CLOUDINARY_API_KEY,
+        api_secret=settings.CLOUDINARY_API_SECRET,
+        secure=True,
+    )
+
+
+def upload_to_cloudinary(file_bytes: bytes, original_filename: str) -> str | None:
+    """
+    Upload raw file bytes to Cloudinary.
+    Returns the secure URL on success, or None if Cloudinary is not configured.
+    """
+    if not _is_cloudinary_configured():
+        return None
+
+    ext = original_filename.rsplit(".", 1)[-1].lower()
+    public_id = f"studybuddy/{uuid.uuid4().hex}"
+
+    # Write bytes to a temp file so Cloudinary SDK can stream it
+    with tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False) as tmp:
+        tmp.write(file_bytes)
+        tmp_path = tmp.name
+
+    try:
+        result = cloudinary.uploader.upload(
+            tmp_path,
+            public_id=public_id,
+            resource_type="raw",   # preserve original file format
+            overwrite=True,
+        )
+        return result["secure_url"]
+    finally:
+        os.unlink(tmp_path)   # always clean up temp file
+
+
+def download_file_from_url(url: str, ext: str) -> str:
+    """
+    Download a file from a URL (e.g. Cloudinary) to a temp path.
+    Returns the temp file path — caller is responsible for deleting it.
+    """
+    tmp = tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False)
+    tmp.close()
+    urllib.request.urlretrieve(url, tmp.name)
+    return tmp.name
 
 
 # ── File validation ───────────────────────────────────────────────────────────

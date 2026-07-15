@@ -30,3 +30,4 @@ pydantic[email]
 pydantic-settings
 aiofiles
 psycopg2-binary
+cloudinary

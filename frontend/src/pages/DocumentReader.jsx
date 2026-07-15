@@ -4,6 +4,7 @@ import { Document, Page, pdfjs } from 'react-pdf'
 import ReactMarkdown from 'react-markdown'
 import { getDocument } from '../api/documents'
 import {
+  getDocumentFileUrl,
   getDocumentFileBlob,
   getDocumentPages,
   getPageContent,
@@ -53,8 +54,7 @@ export default function DocumentReader() {
   const [doc, setDoc]               = useState(null)
   const [loading, setLoading]       = useState(true)
   const [error, setError]           = useState(null)
-  const [fileUrl, setFileUrl]       = useState(null)
-  const [fileData, setFileData]     = useState(null)
+  const [fileUrl, setFileUrl]       = useState(null)   // Cloudinary or blob URL for PDFs
   const [numPdfPages, setNumPdfPages] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
   const [currentPage, setCurrentPage] = useState(initialPage)
@@ -109,13 +109,22 @@ export default function DocumentReader() {
         setProgress(prog)
 
         if (docData.file_type === 'pdf') {
-          const blob = await getDocumentFileBlob(documentId)
           try {
-            const ab = await blob.arrayBuffer()
-            setFileData(ab)
-          } catch (e) {
-            // fallback to blob URL if arrayBuffer fails
-            setFileUrl(URL.createObjectURL(blob))
+            const urlData = await getDocumentFileUrl(documentId)
+            if (urlData.file_url) {
+              // Cloudinary URL — pass directly to react-pdf (no blob needed)
+              setFileUrl(urlData.file_url)
+            } else {
+              // Local fallback (dev environment)
+              const blob = await getDocumentFileBlob(documentId)
+              setFileUrl(URL.createObjectURL(blob))
+            }
+          } catch {
+            // Last resort fallback
+            try {
+              const blob = await getDocumentFileBlob(documentId)
+              setFileUrl(URL.createObjectURL(blob))
+            } catch { /* ignore */ }
           }
         }
       } catch (err) {
@@ -420,13 +429,18 @@ export default function DocumentReader() {
         {/* Viewer */}
         <div ref={viewerRef} className="reader-viewer-panel scroll-thin" onMouseUp={handleTextSelection}
           style={{ flex:1, overflow:'auto', padding:'24px', background:'#0A0A12' }}>
-          {isPdf && (fileData || fileUrl) ? (
-            <Document file={fileData ? { data: fileData } : fileUrl} onLoadSuccess={({ numPages }) => {
-              setNumPdfPages(numPages)
-              if (numPages !== totalPages) setTotalPages(numPages)
-            }} loading={
-              <div style={{ textAlign:'center', padding:40, color:'rgba(255,255,255,0.4)' }}>Loading PDF…</div>
-            }>
+          {isPdf && fileUrl ? (
+            <Document
+              file={fileUrl}
+              onLoadSuccess={({ numPages }) => {
+                setNumPdfPages(numPages)
+                if (numPages !== totalPages) setTotalPages(numPages)
+              }}
+              loading={
+                <div style={{ textAlign:'center', padding:40, color:'rgba(255,255,255,0.4)' }}>Loading PDF…</div>
+              }
+              onLoadError={(err) => setError('Failed to render PDF: ' + (err?.message || 'unknown error'))}
+            >
               <Page pageNumber={currentPage} scale={zoom} renderTextLayer renderAnnotationLayer
                 loading={<div style={{ padding:40, color:'rgba(255,255,255,0.3)' }}>Loading page…</div>}/>
             </Document>

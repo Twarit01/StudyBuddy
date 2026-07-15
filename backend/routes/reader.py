@@ -19,7 +19,9 @@ from models.flashcard import Flashcard
 from services.reader import (
     get_document_file_path,
     get_document_pages,
+    get_document_pages_from_url,
     get_page_text,
+    get_page_text_from_url,
     compute_percent,
     run_selection_ai,
 )
@@ -192,14 +194,36 @@ def list_all_progress(
     return [_progress_to_response(p, name) for p, name in rows]
 
 
+@router.get("/{document_id}/file-url")
+def get_document_file_url(
+    document_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return the Cloudinary URL (or local fallback URL) for the document file."""
+    document = _get_owned_document(document_id, db, current_user)
+
+    if document.file_url:
+        return {"file_url": document.file_url, "source": "cloudinary"}
+
+    # Fallback: serve via the local /file endpoint
+    return {"file_url": None, "source": "local"}
+
+
 @router.get("/{document_id}/file")
 def get_document_file(
     document_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Serve the original uploaded file for in-app viewing."""
+    """Serve the original uploaded file (local fallback when Cloudinary not configured)."""
     document = _get_owned_document(document_id, db, current_user)
+
+    # Prefer Cloudinary URL redirect
+    if document.file_url:
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url=document.file_url)
+
     file_path = get_document_file_path(document.filename)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found on server")
@@ -223,8 +247,11 @@ def get_pages(
     current_user: User = Depends(get_current_user),
 ):
     document = _get_owned_document(document_id, db, current_user)
-    file_path = get_document_file_path(document.filename)
-    pages = get_document_pages(file_path, document.file_type)
+    if document.file_url:
+        pages = get_document_pages_from_url(document.file_url, document.file_type)
+    else:
+        file_path = get_document_file_path(document.filename)
+        pages = get_document_pages(file_path, document.file_type)
     return {
         "document_id": document_id,
         "total_pages": len(pages) or 1,
@@ -240,8 +267,11 @@ def get_page_content(
     current_user: User = Depends(get_current_user),
 ):
     document = _get_owned_document(document_id, db, current_user)
-    file_path = get_document_file_path(document.filename)
-    text = get_page_text(file_path, document.file_type, page_num)
+    if document.file_url:
+        text = get_page_text_from_url(document.file_url, document.file_type, page_num)
+    else:
+        file_path = get_document_file_path(document.filename)
+        text = get_page_text(file_path, document.file_type, page_num)
     if text is None:
         raise HTTPException(status_code=404, detail="Page not found")
     return {"page_num": page_num, "text": text}
@@ -260,8 +290,11 @@ def get_reading_progress(
     ).first()
 
     if not progress:
-        file_path = get_document_file_path(document.filename)
-        total = len(get_document_pages(file_path, document.file_type)) or 1
+        if document.file_url:
+            total = len(get_document_pages_from_url(document.file_url, document.file_type)) or 1
+        else:
+            file_path = get_document_file_path(document.filename)
+            total = len(get_document_pages(file_path, document.file_type)) or 1
         return {
             "document_id": document_id,
             "last_page": 1,

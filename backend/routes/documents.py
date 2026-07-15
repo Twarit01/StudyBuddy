@@ -13,7 +13,7 @@ from models.document import Document
 from models.reading_progress import ReadingProgress
 from models.document_note import DocumentNote
 from models.subject import Subject
-from services.document_processor import validate_file, save_uploaded_file, process_document
+from services.document_processor import validate_file, save_uploaded_file, process_document, upload_to_cloudinary
 from services.rag import store_document_chunks, delete_document_chunks
 from services.document_ai import generate_document_summary, generate_formula_sheet
 from services.xp_service import award_xp, update_streak
@@ -32,6 +32,7 @@ class DocumentResponse(BaseModel):
     chunk_count:   int
     is_processed:  bool
     subject_id:    Optional[int] = None
+    file_url:      Optional[str] = None
     summary:       Optional[str] = None
     formula_sheet: Optional[str] = None
     created_at:    datetime
@@ -123,6 +124,13 @@ async def upload_document(
             document_name=file.filename,
             chunks=chunks
         )
+
+        # Upload to Cloudinary for persistent storage (Render filesystem is ephemeral)
+        cloudinary_url = upload_to_cloudinary(file_bytes, file.filename)
+        if cloudinary_url:
+            document.file_url = cloudinary_url
+            # Clean up local file — it's now safely stored on Cloudinary
+            _delete_uploaded_file(saved_filename)
 
         # Auto generate summary
         if generate_summary and chunks:

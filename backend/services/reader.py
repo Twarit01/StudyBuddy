@@ -2,7 +2,7 @@ import os
 from typing import Optional
 
 from core.config import settings
-from services.document_processor import extract_text
+from services.document_processor import extract_text, download_file_from_url
 from services.gemini import generate_text, generate_with_history
 from services.quiz_generator import parse_json_response, MCQ_PROMPT
 from services.flashcard_generator import generate_flashcards_from_context
@@ -16,8 +16,32 @@ def get_document_pages(file_path: str, file_type: str) -> list[dict]:
     return extract_text(file_path, file_type)
 
 
+def get_document_pages_from_url(file_url: str, file_type: str) -> list[dict]:
+    """
+    Download file from a URL (Cloudinary) to a temp path, extract text, clean up.
+    Use this instead of get_document_pages when file_url is set on the document.
+    """
+    tmp_path = download_file_from_url(file_url, file_type)
+    try:
+        return extract_text(tmp_path, file_type)
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+
+
 def get_page_text(file_path: str, file_type: str, page_num: int) -> Optional[str]:
     pages = get_document_pages(file_path, file_type)
+    for page in pages:
+        if page["page_num"] == page_num:
+            return page["text"]
+    return None
+
+
+def get_page_text_from_url(file_url: str, file_type: str, page_num: int) -> Optional[str]:
+    """URL-based version of get_page_text for Cloudinary-stored files."""
+    pages = get_document_pages_from_url(file_url, file_type)
     for page in pages:
         if page["page_num"] == page_num:
             return page["text"]
