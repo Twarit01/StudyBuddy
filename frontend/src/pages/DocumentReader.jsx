@@ -18,10 +18,9 @@ import {
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
 
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'react-pdf/node_modules/pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString()
+// Use CDN worker pinned to the exact pdfjs version bundled inside react-pdf.
+// This avoids Vite's new URL() limitation with nested node_modules paths.
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
 
 const TOOLBAR_ACTIONS = [
   { id: 'ask',       label: 'Ask AI',           icon: '💬' },
