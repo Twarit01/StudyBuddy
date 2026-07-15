@@ -396,125 +396,16 @@ StudyBuddy/
 
 ---
 
-## 🚀 Getting Started (Local Development)
+## 🤝 Contributing
 
-### Prerequisites
-- Python 3.11+
-- Node.js 20+
-- Gemini API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
-- (Optional) Cloudinary account for file storage — not required for local dev
-
-### 1. Clone the repository
-```bash
-git clone https://github.com/Twarit01/StudyBuddy.git
-cd StudyBuddy
-```
-
-### 2. Backend setup
-```bash
-cd backend
-
-# Create virtual environment
-python3.11 -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Configure environment
-cp .env.example .env
-# Open .env and fill in your values:
-#   GEMINI_API_KEY=...
-#   SECRET_KEY=any-long-random-string
-#   DATABASE_URL=sqlite:///./studybuddy.db  (for local dev)
-#   CLOUDINARY_CLOUD_NAME=...  (optional for local)
-#   CLOUDINARY_API_KEY=...     (optional for local)
-#   CLOUDINARY_API_SECRET=...  (optional for local)
-```
-
-### 3. Frontend setup
-```bash
-cd frontend
-npm install
-```
-
-### 4. Run the application
-
-**Option A — One command (recommended)**
-
-From the project root:
-```bash
-npm install
-npm run dev
-```
-
-This starts both backend and frontend together with color-coded logs.
-
-**Option B — Run separately**
-
-**Terminal 1 — Backend:**
-```bash
-cd backend
-source venv/bin/activate
-uvicorn main:app --reload
-```
-
-**Terminal 2 — Frontend:**
-```bash
-cd frontend
-npm run dev
-```
-
-### 5. Open in browser
-
-```
-http://localhost:5173
-```
-
-Register a new account, upload a document, and start studying!
-
-### 6. Test on Mobile
-
-To preview on your phone (must be on same Wi-Fi):
-
-`host: true` is already set in `frontend/vite.config.js`, so just run the normal dev command:
-
-```bash
-cd frontend
-npm run dev
-```
-
-Vite will print both a **Local** and a **Network** URL. Open the **Network** URL (e.g. `http://192.168.1.x:5173`) in your phone's browser. Make sure the backend is also running (`uvicorn main:app --host 0.0.0.0 --port 8000 --reload`) so API calls from the phone reach FastAPI.
+Pull requests are welcome! For major changes, open an issue first to discuss what you'd like to change.
 
 ---
 
-## 🌐 API Endpoints (Summary)
+## 📄 License
 
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/api/auth/register` | Create new account |
-| POST | `/api/auth/login` | Login, returns JWT |
-| GET | `/api/documents/` | List all documents |
-| POST | `/api/documents/upload` | Upload + process + store on Cloudinary |
-| GET | `/api/documents/{id}/summary` | Get auto-generated summary |
-| GET | `/api/documents/{id}/formula-sheet` | Get extracted formula sheet |
-| POST | `/api/chat/` | Send a chat message (RAG) |
-| GET | `/api/chat/sessions` | List all saved chat sessions |
-| POST | `/api/quiz/generate` | Generate a quiz |
-| POST | `/api/quiz/submit` | Submit answers, get score |
-| GET | `/api/flashcards/` | List all flashcards |
-| POST | `/api/flashcards/generate` | AI-generate flashcards |
-| POST | `/api/flashcards/review` | Submit SM-2 quality rating |
-| GET | `/api/reader/{id}/file-url` | Get Cloudinary file URL |
-| GET | `/api/reader/{id}/pages/{n}` | Get page text for reader |
-| POST | `/api/reader/{id}/notes` | Save a reading note |
-| GET | `/api/progress/stats` | Get analytics data |
-| GET | `/api/progress/study-plan` | Get AI study plan |
-| GET | `/api/xp/` | Get current XP and level |
-| GET | `/api/subjects/` | List subjects |
-| POST | `/api/subjects/` | Create a subject |
+MIT License — see [LICENSE](LICENSE) for details.
 
----
 
 ## 📸 Pages at a Glance
 
