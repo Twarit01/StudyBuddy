@@ -8,9 +8,15 @@
 ![Vite](https://img.shields.io/badge/Vite-5-646CFF?style=flat-square&logo=vite)
 ![Gemini](https://img.shields.io/badge/Gemini-2.5_Flash-orange?style=flat-square&logo=google)
 ![ChromaDB](https://img.shields.io/badge/ChromaDB-Vector_DB-purple?style=flat-square)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-336791?style=flat-square&logo=postgresql)
+![Cloudinary](https://img.shields.io/badge/Cloudinary-File_Storage-3448C5?style=flat-square&logo=cloudinary)
+![Vercel](https://img.shields.io/badge/Frontend-Vercel-000000?style=flat-square&logo=vercel)
+![Render](https://img.shields.io/badge/Backend-Render-46E3B7?style=flat-square&logo=render)
 ![Mobile Ready](https://img.shields.io/badge/Mobile-Responsive-10B981?style=flat-square&logo=apple)
 
 > Upload your lecture notes → Ask questions → Generate quizzes → Study with flashcards → Track your progress → Earn XP. All powered by Gemini AI, RAG, and spaced repetition.
+
+🔗 **Live Demo:** [ai-studybuddyy.vercel.app](https://ai-studybuddyy.vercel.app)
 
 ---
 
@@ -28,6 +34,7 @@ Upload PDF, DOCX, or TXT files, organize them into subject folders, and StudyBud
 flowchart TD
     A([🎓 Student]) -->|Uploads PDF / DOCX / TXT| B[📄 Document Processor]
     B -->|Extract + Chunk + Embed| C[(🗄️ ChromaDB Vector Store)]
+    B -->|Store file permanently| CL[☁️ Cloudinary Storage]
     B -->|Auto-generate| S[📋 Summary + Formula Sheet]
 
     A -->|Asks a question| D[💬 Q&A Chat]
@@ -44,10 +51,10 @@ flowchart TD
     G -->|Generate cards + SM-2 schedule| E
 
     A -->|Opens document| R[📖 Document Reader]
-    R -->|Page-by-page reading| C
+    R -->|Fetch file URL| CL
     R -->|AI Q&A on current page| E
 
-    E -->|Results saved| H[(💾 SQLite Database)]
+    E -->|Results saved| H[(💾 PostgreSQL / Neon)]
     H -->|Scores + streaks + weak topics| I[📊 Progress Dashboard]
     I -->|AI Study Plan + Daily Revision| A
     H -->|XP + Level + Achievements| X[🏆 XP System]
@@ -58,6 +65,7 @@ flowchart TD
     style H fill:#3B82F6,color:#fff
     style I fill:#10B981,color:#fff
     style X fill:#F59E0B,color:#fff
+    style CL fill:#3448C5,color:#fff
 ```
 
 ---
@@ -157,13 +165,13 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    subgraph Frontend["⚛️ React Frontend (Vite)"]
+    subgraph Frontend["⚛️ React Frontend (Vercel)"]
         UI[React 18 + Vanilla CSS + Recharts + KaTeX]
         CTX[Context API: Auth, Theme, XP, Sidebar]
         MOB[Mobile Layer: useIsMobile + BottomNav + mobile.css]
     end
 
-    subgraph Backend["⚡ FastAPI Backend"]
+    subgraph Backend["⚡ FastAPI Backend (Render)"]
         Auth[🔐 Auth / JWT]
         RAG[🔍 RAG Engine]
         QG[📝 Quiz Generator]
@@ -176,13 +184,13 @@ flowchart LR
 
     subgraph AI["✨ Gemini 2.5 Flash"]
         GEN[Text Generation]
-        EMB[text-embedding-004]
+        EMB[gemini-embedding-001]
     end
 
     subgraph Storage["💾 Storage"]
         VEC[(ChromaDB\nVectors)]
-        DB[(SQLite\nRelational)]
-        FS[📁 Uploads\nFile System]
+        DB[(PostgreSQL\nNeon — Relational)]
+        CL[☁️ Cloudinary\nFile Storage]
     end
 
     Frontend -->|REST API| Backend
@@ -194,7 +202,8 @@ flowchart LR
     RD --> DB
     XP --> DB
     RAG --> VEC
-    DA --> FS
+    DA --> CL
+    RD --> CL
     Backend --> DB
 
     style Frontend fill:#06B6D4,color:#fff
@@ -212,11 +221,12 @@ flowchart LR
 3. **Chunk** — Text split into 512-token chunks with 64-token overlap
 4. **Embed** — Gemini `gemini-embedding-001` converts each chunk to a vector
 5. **Store** — Vectors saved in ChromaDB with document name and page metadata
-6. **Summarize** — Gemini auto-generates a structured summary from the chunks
-7. **Query** — Student question converted to a query embedding
-8. **Retrieve** — Top-5 most similar chunks fetched by cosine similarity
-9. **Generate** — Gemini 2.5 Flash generates an answer using retrieved chunks as context
-10. **Cite** — Every answer shows source document, page number, and confidence score
+6. **Cloud Upload** — Original file uploaded to Cloudinary for persistent storage
+7. **Summarize** — Gemini auto-generates a structured summary from the chunks
+8. **Query** — Student question converted to a query embedding
+9. **Retrieve** — Top-5 most similar chunks fetched by cosine similarity
+10. **Generate** — Gemini 2.5 Flash generates an answer using retrieved chunks as context
+11. **Cite** — Every answer shows source document, page number, and confidence score
 
 ---
 
@@ -260,18 +270,51 @@ XP is persisted per user. Level thresholds increase progressively (e.g. Level 1 
 | Vector DB | ChromaDB | Semantic similarity search |
 | RAG Framework | LangChain | Document chunking pipeline |
 | Backend | FastAPI + Python 3.11 | REST API |
-| Database | SQLite + SQLAlchemy | Users, subjects, documents, quizzes, flashcards, chats, XP, notes |
+| Database | PostgreSQL (Neon) + SQLAlchemy | Users, subjects, documents, quizzes, flashcards, chats, XP, notes |
+| File Storage | Cloudinary | Persistent uploaded file storage (survives server restarts) |
 | Frontend | React 18 + Vite 5 | User interface |
 | Styling | Vanilla CSS + custom design system | Dark mode, animations, glassmorphism |
 | Mobile | custom `mobile.css` + `useIsMobile` hook | Full mobile responsive layer |
 | Charts | Recharts | Progress visualization, radar, bar, line, heatmap |
 | Math | KaTeX | LaTeX formula rendering |
-| PDF Viewer | react-pdf | In-app PDF reading |
+| PDF Viewer | react-pdf (pdfjs-dist) | In-app PDF reading |
 | PDF Export | jsPDF + jspdf-autotable | Quiz reports, study plans, summaries, formula sheets |
 | Auth | JWT + bcrypt | Secure user sessions |
 | PDF Parsing | PyMuPDF | Text extraction from PDFs |
 | DOCX Parsing | python-docx | Word document extraction |
 | Spaced Repetition | SM-2 Algorithm | Flashcard scheduling |
+| Frontend Hosting | Vercel | Global CDN, auto-deploy from GitHub |
+| Backend Hosting | Render | Python web service |
+
+---
+
+## 🌐 Deployment
+
+The app is deployed across three services:
+
+| Service | Platform | Notes |
+|---|---|---|
+| Frontend | [Vercel](https://vercel.com) | Auto-deploys on every `git push` to `main` |
+| Backend API | [Render](https://render.com) | Free tier Python web service |
+| Database | [Neon](https://neon.tech) | Serverless PostgreSQL — always persistent |
+| File Storage | [Cloudinary](https://cloudinary.com) | Uploaded files stored permanently in the cloud |
+
+### Environment Variables
+
+**Backend (set in Render dashboard):**
+```
+GEMINI_API_KEY=your_gemini_api_key
+SECRET_KEY=your_jwt_secret_key
+DATABASE_URL=postgresql://...  (from Neon)
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+```
+
+**Frontend (set in Vercel dashboard):**
+```
+VITE_API_URL=https://your-backend.onrender.com
+```
 
 ---
 
@@ -280,13 +323,20 @@ XP is persisted per user. Level thresholds increase progressively (e.g. Level 1 
 ```
 StudyBuddy/
 ├── backend/
-│   ├── main.py                  # FastAPI app entry point
+│   ├── main.py                  # FastAPI app entry point + CORS
 │   ├── requirements.txt
 │   ├── .env.example
 │   ├── models/                  # SQLAlchemy ORM models
+│   │   ├── user.py
+│   │   ├── document.py          # Includes file_url for Cloudinary
+│   │   ├── subject.py
+│   │   ├── flashcard.py
+│   │   ├── reading_progress.py
+│   │   ├── document_note.py
+│   │   └── ...
 │   ├── routes/
 │   │   ├── auth.py              # Register, login, JWT
-│   │   ├── documents.py         # Upload, process, subjects
+│   │   ├── documents.py         # Upload, process, Cloudinary upload
 │   │   ├── chat.py              # RAG Q&A, sessions
 │   │   ├── quiz.py              # Quiz generation & grading
 │   │   ├── flashcards.py        # Flashcard CRUD + SM-2
@@ -294,9 +344,16 @@ StudyBuddy/
 │   │   ├── progress.py          # Analytics & study plan
 │   │   ├── subjects.py          # Subject CRUD
 │   │   └── xp.py                # XP & level system
-│   ├── services/                # AI service wrappers (Gemini, ChromaDB)
+│   ├── services/
+│   │   ├── document_processor.py  # Text extraction + Cloudinary upload
+│   │   ├── reader.py              # Page extraction from URL or local path
+│   │   ├── gemini.py              # Gemini API wrappers
+│   │   ├── rag.py                 # ChromaDB vector operations
+│   │   ├── quiz_generator.py
+│   │   ├── flashcard_generator.py
+│   │   └── ...
 │   ├── core/                    # Config, DB session, auth utilities
-│   └── uploads/                 # Uploaded files (gitignored)
+│   └── uploads/                 # Temp staging folder (auto-cleaned after Cloudinary upload)
 │
 └── frontend/
     ├── public/
@@ -339,12 +396,13 @@ StudyBuddy/
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Getting Started (Local Development)
 
 ### Prerequisites
 - Python 3.11+
 - Node.js 20+
 - Gemini API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
+- (Optional) Cloudinary account for file storage — not required for local dev
 
 ### 1. Clone the repository
 ```bash
@@ -362,12 +420,16 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
-pip install "pydantic[email]"
-pip install "bcrypt==4.0.1"
 
 # Configure environment
 cp .env.example .env
-# Open .env and add your GEMINI_API_KEY
+# Open .env and fill in your values:
+#   GEMINI_API_KEY=...
+#   SECRET_KEY=any-long-random-string
+#   DATABASE_URL=sqlite:///./studybuddy.db  (for local dev)
+#   CLOUDINARY_CLOUD_NAME=...  (optional for local)
+#   CLOUDINARY_API_KEY=...     (optional for local)
+#   CLOUDINARY_API_SECRET=...  (optional for local)
 ```
 
 ### 3. Frontend setup
@@ -375,8 +437,6 @@ cp .env.example .env
 cd frontend
 npm install
 ```
-
-Add the app logo to `frontend/public/studybuddy-logo.png`.
 
 ### 4. Run the application
 
@@ -432,27 +492,27 @@ Vite will print both a **Local** and a **Network** URL. Open the **Network** URL
 
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | `/auth/register` | Create new account |
-| POST | `/auth/login` | Login, returns JWT |
-| GET | `/documents/` | List all documents |
-| POST | `/documents/upload` | Upload + process a document |
-| GET | `/documents/{id}/summary` | Get auto-generated summary |
-| GET | `/documents/{id}/formula-sheet` | Get extracted formula sheet |
-| POST | `/chat/` | Send a chat message (RAG) |
-| GET | `/chat/sessions` | List all saved chat sessions |
-| POST | `/quiz/generate` | Generate a quiz |
-| POST | `/quiz/submit` | Submit answers, get score |
-| GET | `/flashcards/` | List all flashcards |
-| POST | `/flashcards/generate` | AI-generate flashcards |
-| POST | `/flashcards/review` | Submit SM-2 quality rating |
-| GET | `/reader/{doc_id}/page/{n}` | Get page text for reader |
-| POST | `/reader/{doc_id}/notes` | Save a reading note |
-| GET | `/progress/stats` | Get analytics data |
-| GET | `/progress/study-plan` | Get AI study plan |
-| GET | `/xp/` | Get current XP and level |
-| POST | `/xp/award` | Award XP for an action |
-| GET | `/subjects/` | List subjects |
-| POST | `/subjects/` | Create a subject |
+| POST | `/api/auth/register` | Create new account |
+| POST | `/api/auth/login` | Login, returns JWT |
+| GET | `/api/documents/` | List all documents |
+| POST | `/api/documents/upload` | Upload + process + store on Cloudinary |
+| GET | `/api/documents/{id}/summary` | Get auto-generated summary |
+| GET | `/api/documents/{id}/formula-sheet` | Get extracted formula sheet |
+| POST | `/api/chat/` | Send a chat message (RAG) |
+| GET | `/api/chat/sessions` | List all saved chat sessions |
+| POST | `/api/quiz/generate` | Generate a quiz |
+| POST | `/api/quiz/submit` | Submit answers, get score |
+| GET | `/api/flashcards/` | List all flashcards |
+| POST | `/api/flashcards/generate` | AI-generate flashcards |
+| POST | `/api/flashcards/review` | Submit SM-2 quality rating |
+| GET | `/api/reader/{id}/file-url` | Get Cloudinary file URL |
+| GET | `/api/reader/{id}/pages/{n}` | Get page text for reader |
+| POST | `/api/reader/{id}/notes` | Save a reading note |
+| GET | `/api/progress/stats` | Get analytics data |
+| GET | `/api/progress/study-plan` | Get AI study plan |
+| GET | `/api/xp/` | Get current XP and level |
+| GET | `/api/subjects/` | List subjects |
+| POST | `/api/subjects/` | Create a subject |
 
 ---
 
