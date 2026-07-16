@@ -10,7 +10,7 @@ from core.dependencies import get_current_user
 from models.document import Document
 from models.user import User
 from services.mindmap_generator import generate_mindmap
-from services.reader import get_document_file_path, get_document_pages
+from services.reader import get_document_file_path, get_document_pages, get_document_pages_from_url
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -78,14 +78,23 @@ def generate_mind_map(
                 detail=f"Document {doc_id} not found or not yet processed.",
             )
 
+        # Load page text: 1) DB cache  2) Cloudinary  3) local file
         try:
-            file_path = get_document_file_path(doc.filename)
-            pages = get_document_pages(file_path, doc.file_type)
+            import json, os
+            if doc.page_texts:
+                pages = json.loads(doc.page_texts)
+            elif doc.file_url:
+                pages = get_document_pages_from_url(doc.file_url, doc.file_type)
+            else:
+                file_path = get_document_file_path(doc.filename)
+                if not os.path.exists(file_path):
+                    raise FileNotFoundError(f"Local file missing: {file_path}")
+                pages = get_document_pages(file_path, doc.file_type)
         except Exception as exc:
             logger.warning("Could not read pages for doc %s: %s", doc_id, exc)
             raise HTTPException(
                 status_code=422,
-                detail=f"Could not read document '{doc.original_name}'. Make sure the file is still available.",
+                detail=f"Could not read document '{doc.original_name}'. Please re-upload it.",
             )
 
         documents.append({
