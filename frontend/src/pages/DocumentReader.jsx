@@ -128,7 +128,12 @@ export default function DocumentReader() {
           }
         }
       } catch (err) {
-        setError(err.response?.data?.detail || 'Could not load document.')
+        const detail = err.response?.data?.detail || 'Could not load document.'
+        const isFileMissing = err.response?.status === 404 && detail.includes('re-upload')
+        setError(isFileMissing
+          ? 'This document\'s file is no longer on the server. Please delete it and re-upload to restore access.'
+          : detail
+        )
       } finally {
         setLoading(false)
       }

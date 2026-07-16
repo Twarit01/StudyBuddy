@@ -247,11 +247,21 @@ def get_pages(
     current_user: User = Depends(get_current_user),
 ):
     document = _get_owned_document(document_id, db, current_user)
-    if document.file_url:
-        pages = get_document_pages_from_url(document.file_url, document.file_type)
-    else:
-        file_path = get_document_file_path(document.filename)
-        pages = get_document_pages(file_path, document.file_type)
+    try:
+        if document.file_url:
+            pages = get_document_pages_from_url(document.file_url, document.file_type)
+        else:
+            file_path = get_document_file_path(document.filename)
+            if not os.path.exists(file_path):
+                raise HTTPException(
+                    status_code=404,
+                    detail="File not found. Please re-upload this document."
+                )
+            pages = get_document_pages(file_path, document.file_type)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Could not read document: {str(e)}")
     return {
         "document_id": document_id,
         "total_pages": len(pages) or 1,
@@ -267,11 +277,21 @@ def get_page_content(
     current_user: User = Depends(get_current_user),
 ):
     document = _get_owned_document(document_id, db, current_user)
-    if document.file_url:
-        text = get_page_text_from_url(document.file_url, document.file_type, page_num)
-    else:
-        file_path = get_document_file_path(document.filename)
-        text = get_page_text(file_path, document.file_type, page_num)
+    try:
+        if document.file_url:
+            text = get_page_text_from_url(document.file_url, document.file_type, page_num)
+        else:
+            file_path = get_document_file_path(document.filename)
+            if not os.path.exists(file_path):
+                raise HTTPException(
+                    status_code=404,
+                    detail="File not found. Please re-upload this document."
+                )
+            text = get_page_text(file_path, document.file_type, page_num)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Could not read page: {str(e)}")
     if text is None:
         raise HTTPException(status_code=404, detail="Page not found")
     return {"page_num": page_num, "text": text}
