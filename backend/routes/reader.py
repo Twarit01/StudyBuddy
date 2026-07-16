@@ -248,8 +248,14 @@ def get_pages(
 ):
     document = _get_owned_document(document_id, db, current_user)
     try:
-        if document.file_url:
+        # 1. Use DB-cached page texts (fastest, no file download needed)
+        if document.page_texts:
+            import json
+            pages = json.loads(document.page_texts)
+        # 2. Fallback: download from Cloudinary and extract
+        elif document.file_url:
             pages = get_document_pages_from_url(document.file_url, document.file_type)
+        # 3. Last resort: local file (only exists on fresh upload before Cloudinary)
         else:
             file_path = get_document_file_path(document.filename)
             if not os.path.exists(file_path):
@@ -278,8 +284,16 @@ def get_page_content(
 ):
     document = _get_owned_document(document_id, db, current_user)
     try:
-        if document.file_url:
+        # 1. Use DB-cached page texts
+        if document.page_texts:
+            import json
+            pages = json.loads(document.page_texts)
+            match = next((p for p in pages if p["page_num"] == page_num), None)
+            text = match["text"] if match else None
+        # 2. Fallback: download from Cloudinary
+        elif document.file_url:
             text = get_page_text_from_url(document.file_url, document.file_type, page_num)
+        # 3. Last resort: local file
         else:
             file_path = get_document_file_path(document.filename)
             if not os.path.exists(file_path):

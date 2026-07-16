@@ -17,6 +17,7 @@ async def lifespan(app: FastAPI):
     with engine.connect() as conn:
         migrations = [
             "ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_url TEXT",
+            "ALTER TABLE documents ADD COLUMN IF NOT EXISTS page_texts TEXT",
         ]
         for sql in migrations:
             try:

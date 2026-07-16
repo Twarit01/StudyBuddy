@@ -15,6 +15,7 @@ class Document(Base):
     file_type     = Column(String, nullable=False)
     file_size     = Column(Integer, nullable=False)
     file_url      = Column(Text, nullable=True)       # Cloudinary URL (persistent storage)
+    page_texts    = Column(Text, nullable=True)       # JSON: [{page_num, text}, ...] cached at upload
 
     # Processing
     chunk_count    = Column(Integer, default=0)

@@ -13,7 +13,7 @@ from models.document import Document
 from models.reading_progress import ReadingProgress
 from models.document_note import DocumentNote
 from models.subject import Subject
-from services.document_processor import validate_file, save_uploaded_file, process_document, upload_to_cloudinary
+from services.document_processor import validate_file, save_uploaded_file, process_document, upload_to_cloudinary, extract_text
 from services.rag import store_document_chunks, delete_document_chunks
 from services.document_ai import generate_document_summary, generate_formula_sheet
 from services.xp_service import award_xp, update_streak
@@ -116,6 +116,15 @@ async def upload_document(
 
         # Process document — extract text chunks (critical)
         chunks = process_document(file_path, file_type)
+
+        # Cache page texts in DB so reader never needs to re-download the file
+        try:
+            import json
+            pages = extract_text(file_path, file_type)
+            document.page_texts = json.dumps(pages)
+        except Exception as pt_err:
+            import logging
+            logging.warning(f"Page text caching failed (non-fatal): {pt_err}")
 
         # Store in ChromaDB — non-critical (RAG still works partially without it)
         chunks_stored = 0
