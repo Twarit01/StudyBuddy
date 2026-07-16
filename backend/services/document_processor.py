@@ -47,7 +47,9 @@ def upload_to_cloudinary(file_bytes: bytes, original_filename: str) -> str | Non
         result = cloudinary.uploader.upload(
             tmp_path,
             public_id=public_id,
-            resource_type="raw",   # preserve original file format
+            resource_type="raw",
+            type="upload",           # explicit public delivery type
+            access_mode="public",    # ensure the URL is publicly accessible
             overwrite=True,
         )
         return result["secure_url"]
@@ -59,10 +61,18 @@ def download_file_from_url(url: str, ext: str) -> str:
     """
     Download a file from a URL (e.g. Cloudinary) to a temp path.
     Returns the temp file path — caller is responsible for deleting it.
+    Uses urllib with a browser-like User-Agent to avoid 401 rejections.
     """
     tmp = tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False)
     tmp.close()
-    urllib.request.urlretrieve(url, tmp.name)
+
+    req = urllib.request.Request(
+        url,
+        headers={"User-Agent": "Mozilla/5.0 StudyBuddy/1.0"}
+    )
+    with urllib.request.urlopen(req) as response, open(tmp.name, "wb") as f:
+        f.write(response.read())
+
     return tmp.name
 
 
