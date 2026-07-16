@@ -10,6 +10,12 @@ export const getDocumentFileBlob = async (documentId) => {
   return res.data
 }
 
+// Fetch PDF through backend proxy — avoids Cloudinary CORS issues entirely
+export const getDocumentStream = async (documentId) => {
+  const res = await client.get(`/reader/${documentId}/stream`, { responseType: 'blob' })
+  return URL.createObjectURL(res.data)
+}
+
 export const getDocumentPages = async (documentId) => {
   const res = await client.get(`/reader/${documentId}/pages`)
   return res.data

@@ -4,8 +4,6 @@ import { Document, Page, pdfjs } from 'react-pdf'
 import ReactMarkdown from 'react-markdown'
 import { getDocument } from '../api/documents'
 import {
-  getDocumentFileUrl,
-  getDocumentFileBlob,
   getDocumentPages,
   getPageContent,
   getReadingProgress,
@@ -14,6 +12,7 @@ import {
   createDocumentNote,
   deleteDocumentNote,
   selectionAI,
+  getDocumentStream,
 } from '../api/reader'
 
 import 'react-pdf/dist/Page/AnnotationLayer.css'
@@ -110,21 +109,11 @@ export default function DocumentReader() {
 
         if (docData.file_type === 'pdf') {
           try {
-            const urlData = await getDocumentFileUrl(documentId)
-            if (urlData.file_url) {
-              // Cloudinary URL — pass directly to react-pdf (no blob needed)
-              setFileUrl(urlData.file_url)
-            } else {
-              // Local fallback (dev environment)
-              const blob = await getDocumentFileBlob(documentId)
-              setFileUrl(URL.createObjectURL(blob))
-            }
-          } catch {
-            // Last resort fallback
-            try {
-              const blob = await getDocumentFileBlob(documentId)
-              setFileUrl(URL.createObjectURL(blob))
-            } catch { /* ignore */ }
+            // Stream through backend proxy — avoids CORS issues with Cloudinary
+            const blobUrl = await getDocumentStream(documentId)
+            setFileUrl(blobUrl)
+          } catch (streamErr) {
+            console.warn('Stream failed, PDF viewer unavailable:', streamErr)
           }
         }
       } catch (err) {

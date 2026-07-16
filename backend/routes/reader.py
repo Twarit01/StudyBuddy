@@ -210,6 +210,65 @@ def get_document_file_url(
     return {"file_url": None, "source": "local"}
 
 
+@router.get("/{document_id}/stream")
+def stream_document(
+    document_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Proxy-stream the document file to the browser.
+    Downloads from Cloudinary server-to-server (no CORS issues),
+    then serves it with correct Content-Type so react-pdf can render it.
+    """
+    import urllib.request
+    from fastapi.responses import StreamingResponse
+    import io
+
+    document = _get_owned_document(document_id, db, current_user)
+
+    media_types = {
+        "pdf": "application/pdf",
+        "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "txt": "text/plain",
+    }
+    content_type = media_types.get(document.file_type, "application/octet-stream")
+
+    if document.file_url:
+        try:
+            req = urllib.request.Request(
+                document.file_url,
+                headers={"User-Agent": "Mozilla/5.0 StudyBuddy/1.0"}
+            )
+            with urllib.request.urlopen(req) as resp:
+                data = resp.read()
+            return StreamingResponse(
+                io.BytesIO(data),
+                media_type=content_type,
+                headers={
+                    "Content-Disposition": f'inline; filename="{document.original_name}"',
+                    "Cache-Control": "private, max-age=3600",
+                }
+            )
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"Could not fetch file: {e}")
+
+    # Fallback: local file
+    file_path = get_document_file_path(document.filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found. Please re-upload.")
+
+    def iter_file():
+        with open(file_path, "rb") as f:
+            yield from f
+
+    return StreamingResponse(
+        iter_file(),
+        media_type=content_type,
+        headers={"Content-Disposition": f'inline; filename="{document.original_name}"'},
+    )
+
+
 @router.get("/{document_id}/file")
 def get_document_file(
     document_id: int,
