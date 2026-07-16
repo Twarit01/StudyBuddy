@@ -132,7 +132,7 @@ export default function DocumentReader() {
   }, [documentId])
 
   useEffect(() => {
-    if (!doc || isPdf) return
+    if (!doc) return
     const loadPage = async () => {
       try {
         const data = await getPageContent(documentId, currentPage)
@@ -142,7 +142,7 @@ export default function DocumentReader() {
       }
     }
     loadPage()
-  }, [doc, currentPage, documentId, isPdf])
+  }, [doc, currentPage, documentId])
 
   useEffect(() => {
     if (totalPages > 0) persistProgress(currentPage, totalPages)
@@ -433,7 +433,10 @@ export default function DocumentReader() {
               loading={
                 <div style={{ textAlign:'center', padding:40, color:'rgba(255,255,255,0.4)' }}>Loading PDF…</div>
               }
-              onLoadError={(err) => setError('Failed to render PDF: ' + (err?.message || 'unknown error'))}
+              onLoadError={(err) => {
+                console.warn('PDF render error, falling back to text:', err)
+                setFileUrl(null)  // clear fileUrl so text fallback kicks in
+              }}
             >
               <Page pageNumber={currentPage} scale={zoom} renderTextLayer renderAnnotationLayer
                 loading={<div style={{ padding:40, color:'rgba(255,255,255,0.3)' }}>Loading page…</div>}/>
@@ -443,7 +446,12 @@ export default function DocumentReader() {
               border:'1px solid rgba(255,255,255,0.07)', borderRadius:16, padding:'32px 36px',
               fontSize:15 * zoom, lineHeight:1.75, color:'rgba(255,255,255,0.88)',
               whiteSpace:'pre-wrap', userSelect:'text' }}>
-              {highlightText(pageText, searchQuery)}
+              {pageText
+                ? highlightText(pageText, searchQuery)
+                : isPdf
+                  ? <div style={{ color:'rgba(255,255,255,0.3)', textAlign:'center', padding:40 }}>Loading page text…</div>
+                  : null
+              }
             </div>
           )}
         </div>
