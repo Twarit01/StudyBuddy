@@ -114,30 +114,38 @@ async def upload_document(
         db.commit()
         db.refresh(document)
 
-        # Process document
+        # Process document — extract text chunks (critical)
         chunks = process_document(file_path, file_type)
 
-        # Store in ChromaDB
-        chunks_stored = store_document_chunks(
-            user_id=current_user.id,
-            document_id=document.id,
-            document_name=file.filename,
-            chunks=chunks
-        )
+        # Store in ChromaDB — non-critical (RAG still works partially without it)
+        chunks_stored = 0
+        try:
+            chunks_stored = store_document_chunks(
+                user_id=current_user.id,
+                document_id=document.id,
+                document_name=file.filename,
+                chunks=chunks
+            )
+        except Exception as chroma_err:
+            import logging
+            logging.warning(f"ChromaDB storage failed (non-fatal): {chroma_err}")
 
-        # Upload to Cloudinary for persistent storage (Render filesystem is ephemeral)
-        cloudinary_url = upload_to_cloudinary(file_bytes, file.filename)
-        if cloudinary_url:
-            document.file_url = cloudinary_url
-            # Clean up local file — it's now safely stored on Cloudinary
-            _delete_uploaded_file(saved_filename)
+        # Upload to Cloudinary — non-critical (file stays local if this fails)
+        try:
+            cloudinary_url = upload_to_cloudinary(file_bytes, file.filename)
+            if cloudinary_url:
+                document.file_url = cloudinary_url
+                _delete_uploaded_file(saved_filename)
+        except Exception as cloud_err:
+            import logging
+            logging.warning(f"Cloudinary upload failed (non-fatal): {cloud_err}")
 
-        # Auto generate summary
+        # Auto generate summary — already non-critical
         if generate_summary and chunks:
             try:
                 document.summary = generate_document_summary(chunks, file.filename)
             except Exception:
-                pass  # Summary is optional — don't fail upload if it errors
+                pass
 
         document.chunk_count = chunks_stored
         document.is_processed = True
@@ -152,21 +160,23 @@ async def upload_document(
             db.delete(document)
             db.commit()
         raise
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.error(f"Document upload failed: {type(e).__name__}: {e}")
         db.rollback()
         _delete_uploaded_file(saved_filename)
         if document.id:
             delete_document_chunks(user_id=current_user.id, document_id=document.id)
             db.delete(document)
             db.commit()
-        raise _ai_failure("Failed to process document. Please try again later.")
+        raise _ai_failure(f"Failed to process document: {type(e).__name__}")
 
     # ── Award XP ──
     try:
         award_xp(db, current_user, "document_uploaded")
         update_streak(db, current_user)
     except Exception:
-        pass  # XP failure should never block a successful upload
+        pass
 
     return document
 @router.get("/", response_model=List[DocumentResponse])
