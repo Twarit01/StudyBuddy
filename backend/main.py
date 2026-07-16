@@ -8,8 +8,24 @@ import models
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Create any missing tables
     Base.metadata.create_all(bind=engine)
-    print("✅ Database tables created")
+    print("✅ Database tables created/verified")
+
+    # Safe column migrations — add new columns to existing tables
+    # These are idempotent (IF NOT EXISTS) so safe to run every startup
+    with engine.connect() as conn:
+        migrations = [
+            "ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_url TEXT",
+        ]
+        for sql in migrations:
+            try:
+                conn.execute(__import__('sqlalchemy').text(sql))
+                conn.commit()
+            except Exception as e:
+                print(f"⚠️ Migration skipped ({sql[:40]}...): {e}")
+
+    print("✅ Database migrations applied")
     yield
     print("👋 Shutting down StudyBuddy API")
 
