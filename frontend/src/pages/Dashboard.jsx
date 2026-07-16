@@ -77,8 +77,12 @@ export default function Dashboard() {
     const fetchAll = async () => {
       setError(null)
       try {
+        // Fetch all independently so one failure doesn't crash the whole dashboard
         const [quizHistory, fcStats, docs, readingStats] = await Promise.all([
-          getQuizHistory(), getFlashcardStats(), listDocuments(), getReadingStats()
+          getQuizHistory().catch(() => []),
+          getFlashcardStats().catch(() => ({ total: 0, due_today: 0 })),
+          listDocuments().catch(() => []),
+          getReadingStats().catch(() => null),
         ])
 
         const avgScore = quizHistory.length
