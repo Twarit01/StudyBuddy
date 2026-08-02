@@ -23,13 +23,13 @@ import 'react-pdf/dist/Page/TextLayer.css'
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
 
 const TOOLBAR_ACTIONS = [
-  { id: 'ask',       label: 'Ask AI',           icon: '💬' },
   { id: 'explain',   label: 'Explain Simply',   icon: '💡' },
   { id: 'summarize', label: 'Summarize',        icon: '📝' },
   { id: 'quiz',      label: 'Generate Quiz',    icon: '🎯' },
   { id: 'flashcards',label: 'Flashcards',       icon: '🃏' },
   { id: 'note',      label: 'Save as Note',     icon: '📌' },
 ]
+
 
 function highlightText(text, query) {
   if (!query?.trim()) return text

@@ -236,22 +236,8 @@ export default function Chat() {
           display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
           <div>
             <h1 style={{ margin:0, fontSize:16, fontWeight:700 }}>AI Chat</h1>
-            <p style={{ margin:0, fontSize:10, color: 'var(--db-text-muted)' }}>
-              Answers grounded in your uploaded documents
-            </p>
-          </div>
-          {/* Document scope selector */}
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <span style={{ fontSize:11, color:'var(--db-text-muted)' }}>📄</span>
-            <select value={documentId} onChange={e=>setDocumentId(e.target.value)}
-              style={{ background: 'var(--db-hover-bg)',
-                border:'1px solid var(--db-border-light)', borderRadius:8,
-                padding:'5px 9px', color: 'var(--db-text-sub)', fontSize:11, outline:'none', cursor:'pointer' }}>
-              <option value="" style={{ color: isDark ? "#fff" : "#0F172A", background: isDark ? "#161625" : "#fff" }}>All documents</option>
-              {documents.map(d => <option key={d.id} value={d.id} style={{ color: isDark ? "#fff" : "#0F172A", background: isDark ? "#161625" : "#fff" }}>{d.original_name}</option>)}
-            </select>
-          </div>
         </div>
+
 
         {/* Messages */}
         <div className="chat-messages-area scroll-thin" style={{ flex:1, overflowY:'auto', padding:'20px' }}>
@@ -305,8 +291,9 @@ export default function Chat() {
                   {!isUser && (
                     <div style={{ width:36, height:36, borderRadius:10, flexShrink:0,
                       background:'linear-gradient(135deg,#7C3AED,#4F46E5)',
-                      display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}>
-                      🤖
+                      display:'flex', alignItems:'center', justifyContent:'center',
+                      fontSize:11, fontWeight:700, color:'#fff', letterSpacing:0.5 }}>
+                      SB
                     </div>
                   )}
 
@@ -391,7 +378,7 @@ export default function Chat() {
               </button>
             </div>
             <p style={{ textAlign:'center', fontSize:10, color: 'var(--db-text-muted)', margin:'7px 0 0' }}>
-              Enter to send · Shift+Enter for new line · Answers grounded in your documents
+              Enter to send · Shift+Enter for new line
             </p>
           </div>
         </div>
