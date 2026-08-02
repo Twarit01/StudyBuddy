@@ -156,17 +156,23 @@ SIMILARITY_THRESHOLD = 0.3  # Minimum similarity score to consider a chunk relev
 def build_rag_prompt(query: str, chunks: list[dict]) -> tuple[str, list[str]]:
     """
     Build the prompt that gets sent to Gemini.
-    Injects retrieved chunks as context.
-    Filters out low-similarity chunks below SIMILARITY_THRESHOLD.
+    Injects retrieved chunks as context when available.
+    Falls back to general knowledge when no relevant chunks are found.
 
     Returns (full_prompt, list_of_context_texts)
     """
     if not chunks:
+        # No documents uploaded — answer from general knowledge
         return (
-            f"The student asked: {query}\n\n"
-            "IMPORTANT: No study material has been uploaded yet. "
-            "Respond ONLY with: 'This topic is not found in your uploaded documents. "
-            "Please upload relevant study material to get answers from your documents.'",
+            f"""You are StudyBuddy AI, a helpful and knowledgeable study assistant.
+
+The student has not uploaded any study documents yet, so answer from your general knowledge.
+Be thorough, clear, and educational. You may use examples, analogies, and structured explanations.
+
+STUDENT QUESTION:
+{query}
+
+ANSWER:""",
             []
         )
 
@@ -174,11 +180,17 @@ def build_rag_prompt(query: str, chunks: list[dict]) -> tuple[str, list[str]]:
     relevant_chunks = [c for c in chunks if c["similarity_score"] >= SIMILARITY_THRESHOLD]
 
     if not relevant_chunks:
+        # Documents exist but none are relevant — answer from general knowledge
         return (
-            f"The student asked: {query}\n\n"
-            "IMPORTANT: The uploaded documents do not contain information relevant to this question. "
-            "Respond ONLY with: 'This topic is not covered in your uploaded documents. "
-            "The question appears to be outside the scope of your study materials.'",
+            f"""You are StudyBuddy AI, a helpful and knowledgeable study assistant.
+
+The student's uploaded documents do not contain relevant information for this question.
+Answer from your general knowledge instead. Be thorough, clear, and educational.
+
+STUDENT QUESTION:
+{query}
+
+ANSWER:""",
             []
         )
 
@@ -193,14 +205,13 @@ def build_rag_prompt(query: str, chunks: list[dict]) -> tuple[str, list[str]]:
 
     context = "\n\n---\n\n".join(context_parts)
 
-    prompt = f"""You are answering STRICTLY from the student's uploaded study documents shown below.
-Rules:
-- Only answer using the provided CONTEXT. Do NOT use outside knowledge.
-- Always cite which document and page your answer comes from.
-- If the context does not contain a clear answer, say: "This specific detail is not clearly covered in your uploaded documents."
-- Be concise and clear.
+    prompt = f"""You are StudyBuddy AI, a helpful and knowledgeable study assistant.
 
-CONTEXT:
+The student's uploaded documents provide the following context. Use it as your primary reference.
+If the context directly answers the question, cite the source document and page.
+If the context only partially answers or is not directly relevant, use your general knowledge to give a complete, helpful answer — and note which parts came from documents vs. general knowledge.
+
+CONTEXT FROM UPLOADED DOCUMENTS:
 {context}
 
 STUDENT QUESTION:
