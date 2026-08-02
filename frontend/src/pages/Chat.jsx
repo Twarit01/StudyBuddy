@@ -236,10 +236,11 @@ export default function Chat() {
           display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
           <div>
             <h1 style={{ margin:0, fontSize:16, fontWeight:700 }}>AI Chat</h1>
+          </div>
         </div>
 
-
         {/* Messages */}
+
         <div className="chat-messages-area scroll-thin" style={{ flex:1, overflowY:'auto', padding:'20px' }}>
           <div style={{ maxWidth:760, margin:'0 auto', display:'flex', flexDirection:'column', gap:18 }}>
 
